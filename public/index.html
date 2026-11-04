@@ -1,794 +1,714 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GCSPL Mega Auction 2026 — Grand Cricket Simulation Premier League</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background: radial-gradient(circle at 50% 0%, #171b30 0%, #0c0f1d 55%, #05070e 100%);
-      color: #f1f5f9;
-      min-height: 100vh;
-    }
-    .font-cinzel { font-family: 'Cinzel', serif; }
-    .gold-gradient-text {
-      background: linear-gradient(135deg, #FFF3B0 0%, #CA9E3C 50%, #9B701D 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .gold-border { border: 1px solid rgba(202, 158, 60, 0.35); }
-    .glass-card {
-      background: rgba(18, 22, 40, 0.88);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
-    }
-    .active-bid-pulse {
-      box-shadow: 0 0 25px rgba(230, 161, 23, 0.45);
-      animation: pulseGlow 1.5s infinite alternate;
-    }
-    @keyframes pulseGlow {
-      0% { box-shadow: 0 0 15px rgba(230, 161, 23, 0.3); }
-      100% { box-shadow: 0 0 35px rgba(230, 161, 23, 0.7); }
-    }
-    @keyframes marquee {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
-    }
-    .animate-marquee { display: inline-block; animation: marquee 30s linear infinite; }
-  </style>
-</head>
-<body class="p-2 sm:p-4 flex flex-col min-h-screen pb-28">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GCSPL Auction</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Hind:wght@400;500;600&display=swap">
+<style>
+[hidden]{display:none!important}
 
-  <!-- TOP HEADER -->
-  <header class="max-w-7xl mx-auto w-full mb-3">
-    <div class="glass-card rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2 gold-border">
-      <div class="flex items-center gap-2.5">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 flex items-center justify-center text-xl sm:text-2xl shadow-lg">
-          🏆
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Indore Mega Auction</span>
-            <span id="auctionStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-              ⏳ Waiting in Lobby
-            </span>
-          </div>
-          <h1 class="text-base sm:text-2xl font-black font-cinzel gold-gradient-text tracking-wide">GCSPL PREMIER LEAGUE</h1>
-        </div>
-      </div>
+/* Layout: one fixed screen. Host | lot | bid on top, ten team tiles, one action bar. Everything else lives in the side menu. */
+:root{
+  --bg:#0a0f1e; --panel:#121a30; --panel2:#18233f; --line:#26335a;
+  --fg:#eef1fa; --mute:#8d9ac0; --gold:#f2b632; --gold-ink:#2a1d00;
+  --good:#3ddc97; --bad:#ff5d6c; --warn:#ffb86b;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Hind','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.35;overflow-x:hidden;
+  padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));
+  background-image:radial-gradient(1100px 420px at 50% -10%,#1b2a55 0%,transparent 70%)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+#app{height:100%;max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:8px;min-height:0}
+.top{display:flex;align-items:center;gap:10px;flex:none}
+.top h1{margin:0;font:800 24px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.top h1 b{color:var(--gold)}
+.sp{flex:1}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute);min-width:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+.dot.on{background:var(--good);box-shadow:0 0 0 3px #3ddc9733}
+.dot.err{background:var(--bad)}
+.who span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu{width:42px;height:38px;border:1px solid var(--line);background:var(--panel);border-radius:8px;display:grid;place-content:center;gap:4px;flex:none}
+.menu i{display:block;width:20px;height:2px;background:var(--fg);border-radius:2px}
+.menu:hover{border-color:var(--gold)}
+.stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) minmax(270px,360px);gap:8px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;min-height:0;overflow:hidden}
+.host{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:8px;background:linear-gradient(180deg,#1a2548,var(--panel))}
+.host svg{width:min(100%,170px);flex:1;min-height:0}
+.mouth{transform-origin:80px 113px;transform-box:view-box}
+.talk .mouth{animation:talk .22s infinite alternate}
+@keyframes talk{from{transform:scaleY(.35)}to{transform:scaleY(1.5)}}
+.eye{animation:blink 5s infinite;transform-origin:center;transform-box:fill-box}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+.gavel{transform-origin:150px 190px;transform-box:view-box}
+.hit .gavel{animation:hit .5s 2}
+@keyframes hit{0%{transform:rotate(0)}45%{transform:rotate(-38deg)}70%{transform:rotate(8deg)}100%{transform:rotate(0)}}
+.bubble{position:relative;background:var(--fg);color:#0b1226;border-radius:8px;padding:7px 10px;font-weight:500;font-size:13px;width:100%;max-height:5.6em;overflow:hidden;flex:none}
+.lot{display:flex;flex-direction:column;gap:12px;justify-content:center}
+.lotset{display:flex;justify-content:space-between;gap:8px;color:var(--mute);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.pname{font:800 clamp(30px,min(7vw,11vh),84px)/.95 var(--display);text-transform:uppercase;margin:0;text-wrap:balance;overflow-wrap:anywhere}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:2px 10px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);font-size:13px;font-weight:600;letter-spacing:.04em}
+.tag.os{color:var(--warn);border-color:#5b4630}.tag.in{color:var(--good);border-color:#255a47}
+.base{display:flex;align-items:baseline;gap:10px;margin-top:6px}
+.base small{color:var(--mute);letter-spacing:.12em;text-transform:uppercase;font-size:12px}
+.base strong{font:800 clamp(26px,5vh,38px) var(--display);color:var(--gold)}
+.pop{animation:pop .4s ease-out}
+@keyframes pop{from{transform:translateY(8px);opacity:.2}to{transform:none;opacity:1}}
+.empty{display:flex;flex-direction:column;gap:6px;justify-content:center;height:100%;color:var(--mute);font-size:14px}
+.empty b{font:800 clamp(24px,4.5vh,32px) var(--display);color:var(--fg);text-transform:uppercase}
+.bidbox{display:flex;flex-direction:column;gap:6px;justify-content:center}
+.bidtop{display:flex;gap:12px;align-items:center}
+.ring{position:relative;width:clamp(70px,13vh,104px);aspect-ratio:1;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .t{position:absolute;inset:0;display:grid;place-items:center;font:800 clamp(26px,5vh,36px) var(--display)}
+.cur{min-width:0}
+.cur small{display:block;color:var(--mute);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+.cur strong{font:800 clamp(34px,min(7vh,8vw),56px)/1 var(--display);color:var(--gold);display:block}
+.leader{display:inline-flex;gap:8px;align-items:center;margin-top:2px;font-weight:600;font-size:14px}
+.status{font:800 clamp(18px,3.4vh,24px) var(--display);letter-spacing:.08em;text-transform:uppercase;min-height:1.2em}
+.status.once{color:var(--warn)}.status.twice{color:var(--bad)}
+.bidlog{display:flex;gap:5px;overflow:hidden;white-space:nowrap}
+.bl{font-size:12px;padding:1px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);flex:none}
+.incnote{color:var(--mute);font-size:12px}
+.badge{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font:800 9.5px var(--display);color:#0b0f1e;flex:none;overflow:hidden}
+.paddles{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;flex:none}
+.pad{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--tc);border-radius:8px;padding:6px 8px;min-width:0;position:relative}
+.pad:hover:not(.lock):not(.lead){background:var(--panel2);border-color:var(--tc)}
+.pad .r1{display:flex;align-items:center;gap:6px;min-width:0}
+.pad .nm{font:800 18px/1 var(--display);letter-spacing:.04em}
+.pad .ow{color:var(--mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.pad .pu{font-weight:600;font-size:13px}
+.pad .ct{font-size:11px;color:var(--mute)}
+.pad .st{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);min-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad.lock{opacity:.5}
+.pad.lead{background:var(--tc);color:#0b0f1e}
+.pad.lead .ow,.pad.lead .st,.pad.lead .ct{color:#0b0f1e}
+.pad.lead .badge{background:#0b0f1e;color:var(--tc)}
+.pad.me{outline:2px solid var(--gold);outline-offset:1px}
+.pad.on::after{content:"";position:absolute;right:6px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--good)}
+.pad.ai::before{content:"AI";position:absolute;right:6px;bottom:4px;font-size:9px;font-weight:700;color:var(--gold)}
+.bar{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 14px;font-weight:600;letter-spacing:.03em;min-height:40px}
+.btn:hover:not(:disabled){border-color:var(--gold)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.pri{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font:800 19px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.btn.sold{background:var(--good);color:#04251a;border-color:var(--good);font:800 19px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.btn.bad{color:var(--bad)}
+.bar .big{flex:1 1 90px}.bar .small{flex:1 1 70px;font-size:13px;padding:6px 8px;min-height:34px}
+.bidbtn{flex:1;min-height:54px;border-radius:10px;border:0;background:var(--tc,var(--gold));color:#0b0f1e;font:800 30px var(--display);letter-spacing:.06em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.bidbtn small{font:500 12px var(--body);letter-spacing:.02em;text-transform:none}
+.bidbtn:disabled{background:var(--panel2);color:var(--mute);cursor:not-allowed}
+.bidbtn:active:not(:disabled){transform:scale(.99)}
+/* drawer */
+#scrim{position:fixed;inset:0;background:#050813aa;z-index:30}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--bg);border-left:1px solid var(--line);z-index:31;display:flex;flex-direction:column;padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px);box-shadow:-10px 0 40px #0008}
+#drawer[hidden],#scrim[hidden]{display:none}
+.dh{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+.dh h2{margin:0;font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;flex:1}
+.tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 8px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:7px 10px;color:var(--mute);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:12px}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--gold)}
+#dbody{flex:1;min-height:0;overflow:auto;padding:12px}
+.tcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.tc{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--tc);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:6px;text-align:left;min-width:0}
+.tc:hover{background:var(--panel2)}
+.tc .h{display:flex;align-items:center;gap:8px}
+.tc .h strong{font:800 20px var(--display);letter-spacing:.04em}
+.tc .h .own{color:var(--mute);font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc .purse{font:800 28px/1 var(--display);color:var(--gold)}
+.tc .purse small{font:500 12px var(--body);color:var(--mute);margin-left:6px}
+.meter{position:relative;height:9px;background:#0b1226;border-radius:5px;border:1px solid var(--line)}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--tc);border-radius:5px}
+.meter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);left:calc(18/25*100%)}
+.rrow{display:flex;gap:5px;flex-wrap:wrap}
+.rc{font-size:12px;border-radius:4px;padding:1px 7px;background:var(--panel2);border:1px solid var(--line);color:var(--mute)}
+.rc b{color:var(--fg);margin-left:3px}
+.pill{font-size:11px;letter-spacing:.08em;font-weight:700;text-transform:uppercase;border-radius:4px;padding:1px 7px;flex:none}
+.pill.red{background:#3b1520;color:var(--bad)}.pill.grn{background:#10382b;color:var(--good)}.pill.amb{background:#3a2c14;color:var(--warn)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;color:var(--mute);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:5px 6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:6px;border-bottom:1px solid #1d2748}
+.scroll{overflow-x:auto;max-width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--mute)}
+.chip[aria-pressed="true"]{color:var(--gold-ink);background:var(--gold);border-color:var(--gold);font-weight:600}
+input[type=search],select{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;min-width:0}
+.sqgrp h4{margin:10px 0 4px;font:800 17px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+textarea{width:100%;min-height:130px;background:#0b1226;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.4 ui-monospace,Menlo,monospace}
+.sec{margin:14px 0 6px;font:800 16px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.hint{color:var(--mute);font-size:12px;margin:4px 0}
+#splash,#modal{position:fixed;inset:0;background:#050813ee;display:grid;place-items:center;z-index:50;padding:16px;overflow:auto}
+#splash[hidden],#modal[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:560px;width:100%;display:flex;flex-direction:column;gap:10px}
+.card h2{margin:0;font:800 38px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+.card h2 b{color:var(--gold)}
+.card p{margin:0;color:var(--mute)}
+.pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.pickb{display:flex;align-items:center;gap:8px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-left:5px solid var(--tc);border-radius:8px;padding:8px 10px;min-width:0}
+.pickb:disabled{opacity:.4;cursor:not-allowed}
+.pickb[aria-pressed="true"]{background:var(--tc);color:#0b0f1e}
+.pickb span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#soldov{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:40;opacity:0;transition:opacity .2s}
+#soldov.on{opacity:1}
+#soldov .sb{background:#050813e6;border:3px solid var(--tc,var(--gold));border-radius:14px;padding:18px 34px;text-align:center;transform:rotate(-3deg);max-width:94vw}
+#soldov .sb h3{margin:0;font:800 clamp(60px,12vw,130px)/.9 var(--display);color:var(--gold);letter-spacing:.06em}
+#soldov .sb p{margin:6px 0 0;font:800 clamp(20px,3.5vw,38px) var(--display);letter-spacing:.04em;text-transform:uppercase}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
+#toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:#0b1226;padding:9px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:92vw}
+#toast[hidden]{display:none}
+@media (max-width:1250px){.paddles{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr) minmax(250px,40%)}.host{grid-column:1/-1;flex-direction:row;padding:6px 10px}.host svg{flex:none;width:54px;height:54px}.host .bubble{flex:1;max-height:3.9em}}
+@media (max-width:640px){
+  body{font-size:14px}
+  .stage{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto;align-content:start}
+  .stage>.panel{padding:8px 10px}
+  .lot{flex-direction:column;gap:4px}.pname{font-size:clamp(26px,9vw,40px)}
+  .base{margin-top:0}
+  .bidtop{gap:10px}.ring{width:70px}
+  .pad{padding:4px 6px}.pad .ow,.pad .ct{display:none}.pad .nm{font-size:16px}.pad .badge{display:none}
+  .who span{max-width:46vw}.top h1{font-size:21px}.bidbtn{font-size:24px;min-height:50px}
+}
+@media (max-height:640px) and (max-width:640px){.host{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head><body>
 
-      <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
-        <button id="soundToggleBtn" onclick="toggleAudio()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center gap-1">
-          <span id="soundIcon">🔊</span> <span id="soundLabel" class="hidden md:inline">Audio On</span>
-        </button>
-
-        <div onclick="openLoginModal()" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-amber-500/40 text-xs">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span id="userNameLabel" class="text-amber-300 font-bold">Select Team / Login</span>
-        </div>
-
-        <button onclick="openLoginModal()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs shadow-md">
-          🔑 Login
-        </button>
-
-        <button onclick="toggleMenuDrawer(true)" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-amber-500/40 text-amber-300 font-bold text-xs">
-          ☰
-        </button>
-      </div>
-    </div>
+<div id="app">
+  <header class="top">
+    <h1>GC<b>SPL</b> Auction</h1>
+    <span class="sp"></span>
+    <div class="who"><i class="dot" id="dot"></i><span id="whoTxt">Local</span></div>
+    <button class="menu" id="bMenu" aria-label="Open menu"><i></i><i></i><i></i></button>
   </header>
 
-  <!-- LIVE TV TICKER -->
-  <div class="bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 border-y border-amber-500/30 text-xs py-1.5 px-3 overflow-hidden whitespace-nowrap shadow-md flex items-center gap-3 mb-4 max-w-7xl mx-auto w-full rounded-lg">
-    <div class="flex items-center gap-1.5 bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase animate-pulse">
-      LIVE
+  <section class="stage">
+    <div class="panel host" id="host">
+      <svg viewBox="0 0 200 210" aria-label="Auctioneer Mam" role="img">
+        <ellipse cx="80" cy="205" rx="70" ry="10" fill="#0003"/>
+        <circle cx="80" cy="22" r="17" fill="#1c1320"/>
+        <ellipse cx="80" cy="70" rx="45" ry="52" fill="#1c1320"/>
+        <path d="M30 210 C30 160 55 148 80 148 C105 148 130 160 130 210Z" fill="#7a1f3d"/>
+        <path d="M62 150 L80 185 L98 150 Z" fill="#f2b632"/>
+        <path d="M30 210 C30 190 38 170 52 160 L60 210Z" fill="#f2b632" opacity=".85"/>
+        <rect x="68" y="124" width="24" height="28" rx="8" fill="#c98a66"/>
+        <ellipse cx="80" cy="84" rx="32" ry="38" fill="#d9a27c"/>
+        <path d="M46 78 C46 44 64 38 80 38 C98 38 114 46 114 78 C104 62 92 56 80 56 C66 56 54 62 46 78Z" fill="#1c1320"/>
+        <circle cx="48" cy="96" r="3.5" fill="#f2b632"/><circle cx="112" cy="96" r="3.5" fill="#f2b632"/>
+        <ellipse class="eye" cx="67" cy="82" rx="3.6" ry="4.4" fill="#1c1320"/><ellipse class="eye" cx="93" cy="82" rx="3.6" ry="4.4" fill="#1c1320"/>
+        <path d="M60 73 Q67 69 74 73M86 73 Q93 69 100 73" stroke="#1c1320" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <circle cx="80" cy="68" r="2.2" fill="#d6283a"/>
+        <path d="M80 86 L77 100 L83 100" stroke="#b9794f" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <ellipse class="mouth" cx="80" cy="113" rx="8" ry="3.6" fill="#8a2336"/>
+        <g class="gavel"><rect x="146" y="150" width="9" height="46" rx="3" fill="#8b5a2b"/><rect x="132" y="140" width="38" height="16" rx="4" fill="#b8793a"/></g>
+        <rect x="118" y="194" width="56" height="9" rx="3" fill="#5a3a1a"/>
+      </svg>
+      <div class="bubble" id="bubble" aria-live="polite">Welcome!</div>
     </div>
-    <div class="overflow-hidden relative w-full">
-      <div class="inline-block animate-marquee font-medium text-slate-300 text-[11px] space-x-6">
-        <span class="text-amber-300 font-bold">🏆 GCSPL MEGA AUCTION 2026</span>
-        <span class="text-emerald-400">💰 10 Teams • Total Purse ₹120.00 Cr Each • Squad: 18-25 Players</span>
-        <span class="text-yellow-400">🎙️ AI Auctioneer: Mallika Ma'am</span>
-      </div>
-    </div>
-  </div>
+    <div class="panel lot" id="lot"></div>
+    <div class="panel bidbox" id="bidbox"></div>
+  </section>
 
-  <!-- MAIN CONTENT AREA -->
-  <main class="max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
-    
-    <!-- LEFT 7 COLS: WAITING LOBBY OR ACTIVE PLAYER CARD -->
-    <div class="lg:col-span-7 flex flex-col gap-4">
+  <section class="paddles" id="paddles"></section>
+  <section class="bar" id="bar"></section>
+</div>
 
-      <!-- 1. WAITING LOBBY SCREEN -->
-      <div id="waitingLobbyScreen" class="glass-card rounded-2xl p-6 sm:p-10 gold-border flex flex-col items-center justify-center text-center min-h-[380px]">
-        <div class="w-20 h-20 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-4xl mb-4 shadow-xl">
-          🏟️
-        </div>
-        <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-extrabold uppercase tracking-widest border border-amber-500/30 mb-3">
-          Official Auction Hall Lobby
-        </span>
-        <h2 class="text-2xl sm:text-4xl font-black font-cinzel gold-gradient-text mb-2">
-          WELCOME TO GCSPL 2026
-        </h2>
-        <p class="text-xs sm:text-sm text-slate-300 max-w-md mb-6 leading-relaxed">
-          The auction has not started yet. All Franchise Owners must click the <b>"🔑 Login"</b> button above to connect their bidding paddle. The Host will begin the auction once all teams are ready.
-        </p>
+<div id="scrim" hidden></div>
+<aside id="drawer" hidden aria-label="Menu">
+  <div class="dh"><h2>Menu</h2><button class="btn" id="bClose">Close</button></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="dbody"></div>
+</aside>
 
-        <div class="flex flex-wrap justify-center gap-3 w-full max-w-md">
-          <button onclick="openLoginModal()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-500/40 transition">
-            👥 Login as Franchise
-          </button>
-          <button id="lobbyStartAuctionBtn" onclick="startAuctionByHost()" class="hidden flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition">
-            🚀 START AUCTION NOW (HOST)
-          </button>
-        </div>
-      </div>
+<div id="splash" hidden><div class="card" id="splashCard"></div></div>
+<div id="modal" hidden><div class="card" id="modalCard"></div></div>
+<div id="soldov"><div class="sb"><h3>SOLD!</h3><p id="soldTxt"></p></div></div>
+<canvas id="confetti"></canvas>
+<div id="toast" hidden></div>
 
-      <!-- 2. LIVE PLAYER BIDDING STAGE -->
-      <div id="liveBiddingStage" class="hidden glass-card rounded-2xl p-4 sm:p-6 gold-border relative flex flex-col items-center text-center">
-        
-        <!-- Timer Progress Bar -->
-        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden mb-3 border border-slate-700">
-          <div id="timerProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 transition-all duration-300 w-full"></div>
-        </div>
-        <div class="flex justify-between items-center w-full text-xs font-bold mb-4 px-1">
-          <span id="lotBadge" class="text-amber-400 uppercase tracking-wider">MARQUEE SET</span>
-          <span id="timerText" class="px-2.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono text-sm">⏱️ 30s</span>
-        </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const PLAYERS = [{"name":"Virat Kohli","nation":"India","role":"Batter","base":200,"set":"M1","setName":"Marquee 1","id":1},{"name":"Travis Head","nation":"Australia","role":"Batter","base":200,"set":"M1","setName":"Marquee 1","id":2},{"name":"Jasprit Bumrah","nation":"India","role":"Fast Bowler","base":200,"set":"M1","setName":"Marquee 1","id":3},{"name":"Heinrich Klaasen","nation":"South Africa","role":"WK","base":200,"set":"M1","setName":"Marquee 1","id":4},{"name":"Hardik Pandya","nation":"India","role":"All-rounder","base":200,"set":"M1","setName":"Marquee 1","id":5},{"name":"Rashid Khan","nation":"Afghanistan","role":"Spinner","base":200,"set":"M1","setName":"Marquee 1","id":6},{"name":"Jos Buttler","nation":"England","role":"WK","base":200,"set":"M1","setName":"Marquee 1","id":7},{"name":"Ravindra Jadeja","nation":"India","role":"All-rounder","base":200,"set":"M1","setName":"Marquee 1","id":8},{"name":"Pat Cummins","nation":"Australia","role":"Fast Bowler","base":200,"set":"M1","setName":"Marquee 1","id":9},{"name":"Suryakumar Yadav","nation":"India","role":"Batter","base":200,"set":"M1","setName":"Marquee 1","id":10},{"name":"Nicholas Pooran","nation":"West Indies","role":"WK","base":200,"set":"M1","setName":"Marquee 1","id":11},{"name":"Mitchell Starc","nation":"Australia","role":"Fast Bowler","base":200,"set":"M1","setName":"Marquee 1","id":12},{"name":"Shubman Gill","nation":"India","role":"Batter","base":200,"set":"M1","setName":"Marquee 1","id":13},{"name":"Kagiso Rabada","nation":"South Africa","role":"Fast Bowler","base":200,"set":"M1","setName":"Marquee 1","id":14},{"name":"Rishabh Pant","nation":"India","role":"WK","base":200,"set":"M1","setName":"Marquee 1","id":15},{"name":"Sunil Narine","nation":"West Indies","role":"All-rounder","base":200,"set":"M1","setName":"Marquee 1","id":16},{"name":"Rohit Sharma","nation":"India","role":"Batter","base":200,"set":"M2","setName":"Marquee 2","id":17},{"name":"Glenn Maxwell","nation":"Australia","role":"All-rounder","base":200,"set":"M2","setName":"Marquee 2","id":18},{"name":"Yashasvi Jaiswal","nation":"India","role":"Batter","base":200,"set":"M2","setName":"Marquee 2","id":19},{"name":"Jofra Archer","nation":"England","role":"Fast Bowler","base":200,"set":"M2","setName":"Marquee 2","id":20},{"name":"Mohammed Siraj","nation":"India","role":"Fast Bowler","base":200,"set":"M2","setName":"Marquee 2","id":21},{"name":"Liam Livingstone","nation":"England","role":"All-rounder","base":200,"set":"M2","setName":"Marquee 2","id":22},{"name":"Shreyas Iyer","nation":"India","role":"Batter","base":200,"set":"M2","setName":"Marquee 2","id":23},{"name":"Aiden Markram","nation":"South Africa","role":"All-rounder","base":200,"set":"M2","setName":"Marquee 2","id":24},{"name":"Arshdeep Singh","nation":"India","role":"Fast Bowler","base":200,"set":"M2","setName":"Marquee 2","id":25},{"name":"Andre Russell","nation":"West Indies","role":"All-rounder","base":200,"set":"M2","setName":"Marquee 2","id":26},{"name":"KL Rahul","nation":"India","role":"WK","base":200,"set":"M2","setName":"Marquee 2","id":27},{"name":"Mitchell Marsh","nation":"Australia","role":"All-rounder","base":200,"set":"M2","setName":"Marquee 2","id":28},{"name":"Kuldeep Yadav","nation":"India","role":"Spinner","base":200,"set":"M2","setName":"Marquee 2","id":29},{"name":"Trent Boult","nation":"New Zealand","role":"Fast Bowler","base":200,"set":"M2","setName":"Marquee 2","id":30},{"name":"Sanju Samson","nation":"India","role":"WK","base":200,"set":"M2","setName":"Marquee 2","id":31},{"name":"David Miller","nation":"South Africa","role":"Batter","base":200,"set":"M2","setName":"Marquee 2","id":32},{"name":"Ruturaj Gaikwad","nation":"India","role":"Batter","base":200,"set":"M3","setName":"Marquee 3","id":33},{"name":"Ravichandran Ashwin","nation":"India","role":"Spinner","base":200,"set":"M3","setName":"Marquee 3","id":34},{"name":"Faf du Plessis","nation":"South Africa","role":"Batter","base":200,"set":"M3","setName":"Marquee 3","id":35},{"name":"Axar Patel","nation":"India","role":"All-rounder","base":200,"set":"M3","setName":"Marquee 3","id":36},{"name":"Devon Conway","nation":"New Zealand","role":"WK","base":200,"set":"M3","setName":"Marquee 3","id":37},{"name":"Mohammed Shami","nation":"India","role":"Fast Bowler","base":200,"set":"M3","setName":"Marquee 3","id":38},{"name":"Josh Hazlewood","nation":"Australia","role":"Fast Bowler","base":200,"set":"M3","setName":"Marquee 3","id":39},{"name":"Rinku Singh","nation":"India","role":"Batter","base":200,"set":"M3","setName":"Marquee 3","id":40},{"name":"Wanindu Hasaranga","nation":"Sri Lanka","role":"All-rounder","base":200,"set":"M3","setName":"Marquee 3","id":41},{"name":"Varun Chakravarthy","nation":"India","role":"Spinner","base":200,"set":"M3","setName":"Marquee 3","id":42},{"name":"Marco Jansen","nation":"South Africa","role":"All-rounder","base":200,"set":"M3","setName":"Marquee 3","id":43},{"name":"Ishan Kishan","nation":"India","role":"WK","base":200,"set":"M3","setName":"Marquee 3","id":44},{"name":"Adam Zampa","nation":"Australia","role":"Spinner","base":200,"set":"M3","setName":"Marquee 3","id":45},{"name":"Abhishek Sharma","nation":"India","role":"All-rounder","base":200,"set":"M3","setName":"Marquee 3","id":46},{"name":"Rachin Ravindra","nation":"New Zealand","role":"All-rounder","base":200,"set":"M3","setName":"Marquee 3","id":47},{"name":"Sai Sudharsan","nation":"India","role":"Batter","base":200,"set":"S1","setName":"Set 1","id":48},{"name":"Phil Salt","nation":"England","role":"WK","base":200,"set":"S1","setName":"Set 1","id":49},{"name":"Keshav Maharaj","nation":"South Africa","role":"Spinner","base":200,"set":"S1","setName":"Set 1","id":50},{"name":"Nitish Kumar Reddy","nation":"India","role":"All-rounder","base":200,"set":"S1","setName":"Set 1","id":51},{"name":"Josh Inglis","nation":"Australia","role":"WK","base":200,"set":"S1","setName":"Set 1","id":52},{"name":"Yuzvendra Chahal","nation":"India","role":"Spinner","base":200,"set":"S1","setName":"Set 1","id":53},{"name":"Lockie Ferguson","nation":"New Zealand","role":"Fast Bowler","base":200,"set":"S1","setName":"Set 1","id":54},{"name":"Tilak Varma","nation":"India","role":"Batter","base":200,"set":"S1","setName":"Set 1","id":55},{"name":"Romario Shepherd","nation":"West Indies","role":"All-rounder","base":200,"set":"S1","setName":"Set 1","id":56},{"name":"Prasidh Krishna","nation":"India","role":"Fast Bowler","base":200,"set":"S1","setName":"Set 1","id":57},{"name":"Fazalhaq Farooqi","nation":"Afghanistan","role":"Fast Bowler","base":200,"set":"S1","setName":"Set 1","id":58},{"name":"Rajat Patidar","nation":"India","role":"Batter","base":200,"set":"S1","setName":"Set 1","id":59},{"name":"Tim David","nation":"Australia","role":"Batter","base":200,"set":"S1","setName":"Set 1","id":60},{"name":"Washington Sundar","nation":"India","role":"All-rounder","base":200,"set":"S1","setName":"Set 1","id":61},{"name":"Michael Bracewell","nation":"New Zealand","role":"All-rounder","base":200,"set":"S1","setName":"Set 1","id":62},{"name":"Venkatesh Iyer","nation":"India","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":63},{"name":"Finn Allen","nation":"New Zealand","role":"Batter","base":150,"set":"S2","setName":"Set 2","id":64},{"name":"Bhuvneshwar Kumar","nation":"India","role":"Fast Bowler","base":150,"set":"S2","setName":"Set 2","id":65},{"name":"Gerald Coetzee","nation":"South Africa","role":"Fast Bowler","base":150,"set":"S2","setName":"Set 2","id":66},{"name":"Riyan Parag","nation":"India","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":67},{"name":"Kusal Mendis","nation":"Sri Lanka","role":"WK","base":150,"set":"S2","setName":"Set 2","id":68},{"name":"Avesh Khan","nation":"India","role":"Fast Bowler","base":150,"set":"S2","setName":"Set 2","id":69},{"name":"Mohammad Nabi","nation":"Afghanistan","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":70},{"name":"Shashank Singh","nation":"India","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":71},{"name":"Reeza Hendricks","nation":"South Africa","role":"Batter","base":150,"set":"S2","setName":"Set 2","id":72},{"name":"Ravi Bishnoi","nation":"India","role":"Spinner","base":150,"set":"S2","setName":"Set 2","id":73},{"name":"Noor Ahmad","nation":"Afghanistan","role":"Spinner","base":150,"set":"S2","setName":"Set 2","id":74},{"name":"Dhruv Jurel","nation":"India","role":"WK","base":150,"set":"S2","setName":"Set 2","id":75},{"name":"Daryl Mitchell","nation":"New Zealand","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":76},{"name":"Harshit Rana","nation":"India","role":"Fast Bowler","base":150,"set":"S2","setName":"Set 2","id":77},{"name":"Matthew Short","nation":"Australia","role":"All-rounder","base":150,"set":"S2","setName":"Set 2","id":78},{"name":"Nitish Rana","nation":"India","role":"Batter","base":150,"set":"S3","setName":"Set 3","id":79},{"name":"Quinton de Kock","nation":"South Africa","role":"WK","base":150,"set":"S3","setName":"Set 3","id":80},{"name":"T Natarajan","nation":"India","role":"Fast Bowler","base":150,"set":"S3","setName":"Set 3","id":81},{"name":"Mustafizur Rahman","nation":"Bangladesh","role":"Fast Bowler","base":150,"set":"S3","setName":"Set 3","id":82},{"name":"Shivam Dube","nation":"India","role":"All-rounder","base":150,"set":"S3","setName":"Set 3","id":83},{"name":"Azmatullah Omarzai","nation":"Afghanistan","role":"All-rounder","base":150,"set":"S3","setName":"Set 3","id":84},{"name":"Mukesh Kumar","nation":"India","role":"Fast Bowler","base":150,"set":"S3","setName":"Set 3","id":85},{"name":"Maheesh Theekshana","nation":"Sri Lanka","role":"Spinner","base":150,"set":"S3","setName":"Set 3","id":86},{"name":"Prabhsimran Singh","nation":"India","role":"WK","base":150,"set":"S3","setName":"Set 3","id":87},{"name":"Brandon King","nation":"West Indies","role":"Batter","base":150,"set":"S3","setName":"Set 3","id":88},{"name":"Harshal Patel","nation":"India","role":"All-rounder","base":150,"set":"S3","setName":"Set 3","id":89},{"name":"Sean Abbott","nation":"Australia","role":"All-rounder","base":150,"set":"S3","setName":"Set 3","id":90},{"name":"Ayush Badoni","nation":"India","role":"Batter","base":150,"set":"S3","setName":"Set 3","id":91},{"name":"Nandre Burger","nation":"South Africa","role":"Fast Bowler","base":150,"set":"S3","setName":"Set 3","id":92},{"name":"Suyash Sharma","nation":"India","role":"Spinner","base":150,"set":"S3","setName":"Set 3","id":93},{"name":"Akeal Hosein","nation":"West Indies","role":"Spinner","base":150,"set":"S3","setName":"Set 3","id":94},{"name":"Devdutt Padikkal","nation":"India","role":"Batter","base":150,"set":"S4","setName":"Set 4","id":95},{"name":"Will Jacks","nation":"England","role":"All-rounder","base":150,"set":"S4","setName":"Set 4","id":96},{"name":"Khaleel Ahmed","nation":"India","role":"Fast Bowler","base":150,"set":"S4","setName":"Set 4","id":97},{"name":"Rahul Tewatia","nation":"India","role":"All-rounder","base":150,"set":"S4","setName":"Set 4","id":98},{"name":"Sikandar Raza","nation":"Zimbabwe","role":"All-rounder","base":150,"set":"S4","setName":"Set 4","id":99},{"name":"Sandeep Sharma","nation":"India","role":"Fast Bowler","base":150,"set":"S4","setName":"Set 4","id":100},{"name":"Adam Milne","nation":"New Zealand","role":"Fast Bowler","base":150,"set":"S4","setName":"Set 4","id":101},{"name":"Nehal Wadhera","nation":"India","role":"Batter","base":150,"set":"S4","setName":"Set 4","id":102},{"name":"Shimron Hetmyer","nation":"West Indies","role":"Batter","base":150,"set":"S4","setName":"Set 4","id":103},{"name":"Mayank Markande","nation":"India","role":"Spinner","base":150,"set":"S4","setName":"Set 4","id":104},{"name":"Tabraiz Shamsi","nation":"South Africa","role":"Spinner","base":150,"set":"S4","setName":"Set 4","id":105},{"name":"Abdul Samad","nation":"India","role":"Batter","base":150,"set":"S4","setName":"Set 4","id":106},{"name":"Kyle Mayers","nation":"West Indies","role":"All-rounder","base":150,"set":"S4","setName":"Set 4","id":107},{"name":"Akash Deep","nation":"India","role":"Fast Bowler","base":150,"set":"S4","setName":"Set 4","id":108},{"name":"Naveen-ul-Haq","nation":"Afghanistan","role":"Fast Bowler","base":150,"set":"S4","setName":"Set 4","id":109},{"name":"Rahul Tripathi","nation":"India","role":"Batter","base":100,"set":"S5","setName":"Set 5","id":110},{"name":"Rassie van der Dussen","nation":"South Africa","role":"Batter","base":100,"set":"S5","setName":"Set 5","id":111},{"name":"Tushar Deshpande","nation":"India","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":112},{"name":"Matt Henry","nation":"New Zealand","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":113},{"name":"Shahbaz Ahmed","nation":"India","role":"All-rounder","base":100,"set":"S5","setName":"Set 5","id":114},{"name":"Mohammad Nawaz","nation":"Pakistan","role":"All-rounder","base":100,"set":"S5","setName":"Set 5","id":115},{"name":"Mayank Yadav","nation":"India","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":116},{"name":"Ish Sodhi","nation":"New Zealand","role":"Spinner","base":100,"set":"S5","setName":"Set 5","id":117},{"name":"Sameer Rizvi","nation":"India","role":"Batter","base":100,"set":"S5","setName":"Set 5","id":118},{"name":"Sherfane Rutherford","nation":"West Indies","role":"Batter","base":100,"set":"S5","setName":"Set 5","id":119},{"name":"Vaibhav Arora","nation":"India","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":120},{"name":"Dushmantha Chameera","nation":"Sri Lanka","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":121},{"name":"Krunal Pandya","nation":"India","role":"All-rounder","base":100,"set":"S5","setName":"Set 5","id":122},{"name":"James Neesham","nation":"New Zealand","role":"All-rounder","base":100,"set":"S5","setName":"Set 5","id":123},{"name":"Manav Suthar","nation":"India","role":"Spinner","base":100,"set":"S5","setName":"Set 5","id":124},{"name":"Blessing Muzarabani","nation":"Zimbabwe","role":"Fast Bowler","base":100,"set":"S5","setName":"Set 5","id":125},{"name":"Angkrish Raghuvanshi","nation":"India","role":"Batter","base":100,"set":"S6","setName":"Set 6","id":126},{"name":"Tom Banton","nation":"England","role":"WK","base":100,"set":"S6","setName":"Set 6","id":127},{"name":"Mohsin Khan","nation":"India","role":"Fast Bowler","base":100,"set":"S6","setName":"Set 6","id":128},{"name":"Spencer Johnson","nation":"Australia","role":"Fast Bowler","base":100,"set":"S6","setName":"Set 6","id":129},{"name":"Tanush Kotian","nation":"India","role":"All-rounder","base":100,"set":"S6","setName":"Set 6","id":130},{"name":"Dasun Shanaka","nation":"Sri Lanka","role":"All-rounder","base":100,"set":"S6","setName":"Set 6","id":131},{"name":"Karn Sharma","nation":"India","role":"Spinner","base":100,"set":"S6","setName":"Set 6","id":132},{"name":"Mujeeb Ur Rahman","nation":"Afghanistan","role":"Spinner","base":100,"set":"S6","setName":"Set 6","id":133},{"name":"Shahrukh Khan","nation":"India","role":"Batter","base":100,"set":"S6","setName":"Set 6","id":134},{"name":"David Wiese","nation":"Namibia","role":"All-rounder","base":100,"set":"S6","setName":"Set 6","id":135},{"name":"Akash Madhwal","nation":"India","role":"Fast Bowler","base":100,"set":"S6","setName":"Set 6","id":136},{"name":"Richard Gleeson","nation":"England","role":"Fast Bowler","base":100,"set":"S6","setName":"Set 6","id":137},{"name":"Harpreet Brar","nation":"India","role":"All-rounder","base":100,"set":"S6","setName":"Set 6","id":138},{"name":"Fabian Allen","nation":"West Indies","role":"All-rounder","base":100,"set":"S6","setName":"Set 6","id":139},{"name":"Piyush Chawla","nation":"India","role":"Spinner","base":100,"set":"S6","setName":"Set 6","id":140},{"name":"Gudakesh Motie","nation":"West Indies","role":"Spinner","base":100,"set":"S6","setName":"Set 6","id":141},{"name":"Karun Nair","nation":"India","role":"Batter","base":100,"set":"S7","setName":"Set 7","id":142},{"name":"Litton Das","nation":"Bangladesh","role":"WK","base":100,"set":"S7","setName":"Set 7","id":143},{"name":"Mohit Sharma","nation":"India","role":"Fast Bowler","base":100,"set":"S7","setName":"Set 7","id":144},{"name":"Taskin Ahmed","nation":"Bangladesh","role":"Fast Bowler","base":100,"set":"S7","setName":"Set 7","id":145},{"name":"Nishant Sindhu","nation":"India","role":"All-rounder","base":100,"set":"S7","setName":"Set 7","id":146},{"name":"Corbin Bosch","nation":"South Africa","role":"All-rounder","base":100,"set":"S7","setName":"Set 7","id":147},{"name":"Rahul Chahar","nation":"India","role":"Spinner","base":100,"set":"S7","setName":"Set 7","id":148},{"name":"Abhimanyu Easwaran","nation":"India","role":"Batter","base":100,"set":"S7","setName":"Set 7","id":149},{"name":"Colin Munro","nation":"New Zealand","role":"Batter","base":100,"set":"S7","setName":"Set 7","id":150},{"name":"Kartik Tyagi","nation":"India","role":"Fast Bowler","base":100,"set":"S7","setName":"Set 7","id":151},{"name":"Reece Topley","nation":"England","role":"Fast Bowler","base":100,"set":"S7","setName":"Set 7","id":152},{"name":"George Linde","nation":"South Africa","role":"All-rounder","base":100,"set":"S7","setName":"Set 7","id":153},{"name":"Shreyas Gopal","nation":"India","role":"Spinner","base":100,"set":"S7","setName":"Set 7","id":154},{"name":"Musheer Khan","nation":"India","role":"Batter","base":100,"set":"S8","setName":"Set 8","id":155},{"name":"Pathum Nissanka","nation":"Sri Lanka","role":"Batter","base":100,"set":"S8","setName":"Set 8","id":156},{"name":"Chetan Sakariya","nation":"India","role":"Fast Bowler","base":100,"set":"S8","setName":"Set 8","id":157},{"name":"Lungi Ngidi","nation":"South Africa","role":"Fast Bowler","base":100,"set":"S8","setName":"Set 8","id":158},{"name":"Ramandeep Singh","nation":"India","role":"All-rounder","base":100,"set":"S8","setName":"Set 8","id":159},{"name":"Himanshu Sharma","nation":"India","role":"Spinner","base":100,"set":"S8","setName":"Set 8","id":160},{"name":"Anmolpreet Singh","nation":"India","role":"Batter","base":100,"set":"S8","setName":"Set 8","id":161},{"name":"Kusal Perera","nation":"Sri Lanka","role":"WK","base":100,"set":"S8","setName":"Set 8","id":162},{"name":"Kuldeep Sen","nation":"India","role":"Fast Bowler","base":100,"set":"S8","setName":"Set 8","id":163},{"name":"Richard Ngarava","nation":"Zimbabwe","role":"Fast Bowler","base":100,"set":"S8","setName":"Set 8","id":164},{"name":"Raj Bawa","nation":"India","role":"All-rounder","base":100,"set":"S8","setName":"Set 8","id":165},{"name":"Ryan Burl","nation":"Zimbabwe","role":"All-rounder","base":100,"set":"S8","setName":"Set 8","id":166},{"name":"Shams Mulani","nation":"India","role":"All-rounder","base":100,"set":"S8","setName":"Set 8","id":167},{"name":"Prithvi Shaw","nation":"India","role":"Batter","base":75,"set":"S9","setName":"Set 9","id":168},{"name":"Simarjeet Singh","nation":"India","role":"Fast Bowler","base":75,"set":"S9","setName":"Set 9","id":169},{"name":"Vicky Ostwal","nation":"India","role":"Spinner","base":75,"set":"S9","setName":"Set 9","id":170},{"name":"Ricky Bhui","nation":"India","role":"Batter","base":75,"set":"S9","setName":"Set 9","id":171},{"name":"Sediqullah Atal","nation":"Afghanistan","role":"Batter","base":75,"set":"S9","setName":"Set 9","id":172},{"name":"Anshul Kamboj","nation":"India","role":"All-rounder","base":75,"set":"S9","setName":"Set 9","id":173},{"name":"Abhinav Manohar","nation":"India","role":"Batter","base":75,"set":"S9","setName":"Set 9","id":174},{"name":"Ben Cutting","nation":"Australia","role":"All-rounder","base":75,"set":"S9","setName":"Set 9","id":175},{"name":"Akash Singh","nation":"India","role":"Fast Bowler","base":75,"set":"S9","setName":"Set 9","id":176},{"name":"Shubham Dubey","nation":"India","role":"Batter","base":75,"set":"S9","setName":"Set 9","id":177},{"name":"Vaibhav Suryavanshi","nation":"India","role":"Batter","base":75,"set":"S10","setName":"Set 10","id":178},{"name":"Jake Fraser-McGurk","nation":"Australia","role":"Batter","base":75,"set":"S10","setName":"Set 10","id":179},{"name":"Rasikh Salam","nation":"India","role":"Fast Bowler","base":75,"set":"S10","setName":"Set 10","id":180},{"name":"Ayush Mhatre","nation":"India","role":"Batter","base":75,"set":"S10","setName":"Set 10","id":181},{"name":"Evin Lewis","nation":"West Indies","role":"Batter","base":75,"set":"S10","setName":"Set 10","id":182},{"name":"Yash Dhull","nation":"India","role":"Batter","base":75,"set":"S10","setName":"Set 10","id":183},{"name":"Tim Seifert","nation":"New Zealand","role":"WK","base":75,"set":"S10","setName":"Set 10","id":184},{"name":"Harsh Dubey","nation":"India","role":"All-rounder","base":75,"set":"S10","setName":"Set 10","id":185},{"name":"Roston Chase","nation":"West Indies","role":"All-rounder","base":75,"set":"S10","setName":"Set 10","id":186},{"name":"Vyshak Vijaykumar","nation":"India","role":"Fast Bowler","base":75,"set":"S10","setName":"Set 10","id":187},{"name":"Alzarri Joseph","nation":"West Indies","role":"Fast Bowler","base":75,"set":"S10","setName":"Set 10","id":188},{"name":"Kieron Pollard","nation":"West Indies","role":"All-rounder","base":75,"set":"S10","setName":"Set 10","id":189},{"name":"Abhishek Porel","nation":"India","role":"WK","base":75,"set":"S11","setName":"Set 11","id":190},{"name":"Yash Dayal","nation":"India","role":"Fast Bowler","base":75,"set":"S11","setName":"Set 11","id":191},{"name":"Nathan Ellis","nation":"Australia","role":"Fast Bowler","base":75,"set":"S11","setName":"Set 11","id":192},{"name":"Mayank Agarwal","nation":"India","role":"Batter","base":75,"set":"S11","setName":"Set 11","id":193},{"name":"Josh Little","nation":"Ireland","role":"Fast Bowler","base":75,"set":"S11","setName":"Set 11","id":194},{"name":"KS Bharat","nation":"India","role":"WK","base":75,"set":"S11","setName":"Set 11","id":195},{"name":"Matthew Potts","nation":"England","role":"Fast Bowler","base":75,"set":"S11","setName":"Set 11","id":196},{"name":"Manish Pandey","nation":"India","role":"Batter","base":75,"set":"S11","setName":"Set 11","id":197},{"name":"Anuj Rawat","nation":"India","role":"WK","base":75,"set":"S12","setName":"Set 12","id":198},{"name":"Rilee Rossouw","nation":"South Africa","role":"Batter","base":75,"set":"S12","setName":"Set 12","id":199},{"name":"Tom Curran","nation":"England","role":"All-rounder","base":75,"set":"S12","setName":"Set 12","id":200},{"name":"Saurabh Kumar","nation":"India","role":"All-rounder","base":75,"set":"S12","setName":"Set 12","id":201},{"name":"Lalit Yadav","nation":"India","role":"All-rounder","base":75,"set":"S12","setName":"Set 12","id":202},{"name":"Sandeep Warrier","nation":"India","role":"Fast Bowler","base":75,"set":"S12","setName":"Set 12","id":203},{"name":"Ben Dwarshuis","nation":"Australia","role":"Fast Bowler","base":75,"set":"S12","setName":"Set 12","id":204},{"name":"Priyam Garg","nation":"India","role":"Batter","base":50,"set":"S13","setName":"Set 13","id":205},{"name":"Joe Clarke","nation":"England","role":"WK","base":50,"set":"S13","setName":"Set 13","id":206},{"name":"Baba Indrajith","nation":"India","role":"WK","base":50,"set":"S13","setName":"Set 13","id":207},{"name":"Mandeep Singh","nation":"India","role":"Batter","base":50,"set":"S13","setName":"Set 13","id":208},{"name":"Dwaine Pretorius","nation":"South Africa","role":"All-rounder","base":50,"set":"S13","setName":"Set 13","id":209},{"name":"Abid Mushtaq","nation":"India","role":"All-rounder","base":50,"set":"S13","setName":"Set 13","id":210},{"name":"Harpreet Singh Bhatia","nation":"India","role":"Batter","base":50,"set":"S13","setName":"Set 13","id":211},{"name":"Colin Ackermann","nation":"Netherlands","role":"All-rounder","base":50,"set":"S13","setName":"Set 13","id":212},{"name":"Anukul Roy","nation":"India","role":"All-rounder","base":50,"set":"S13","setName":"Set 13","id":213},{"name":"Paul Walter","nation":"England","role":"All-rounder","base":50,"set":"S13","setName":"Set 13","id":214},{"name":"Suyash Prabhudesai","nation":"India","role":"Batter","base":50,"set":"S14","setName":"Set 14","id":215},{"name":"Jalaj Saxena","nation":"India","role":"All-rounder","base":50,"set":"S14","setName":"Set 14","id":216},{"name":"Dunith Wellalage","nation":"Sri Lanka","role":"All-rounder","base":50,"set":"S14","setName":"Set 14","id":217},{"name":"Arjun Tendulkar","nation":"India","role":"Fast Bowler","base":50,"set":"S14","setName":"Set 14","id":218},{"name":"Beuran Hendricks","nation":"South Africa","role":"Fast Bowler","base":50,"set":"S14","setName":"Set 14","id":219},{"name":"Kunal Rathore","nation":"India","role":"WK","base":50,"set":"S14","setName":"Set 14","id":220},{"name":"Ben McDermott","nation":"Australia","role":"WK","base":50,"set":"S14","setName":"Set 14","id":221},{"name":"Mark Watt","nation":"England","role":"Spinner","base":50,"set":"S14","setName":"Set 14","id":222},{"name":"Lorcan Tucker","nation":"Ireland","role":"WK","base":50,"set":"S15","setName":"Set 15","id":223},{"name":"Nuwan Thushara","nation":"Sri Lanka","role":"Fast Bowler","base":50,"set":"S15","setName":"Set 15","id":224},{"name":"Yash Thakur","nation":"India","role":"Fast Bowler","base":50,"set":"S15","setName":"Set 15","id":225},{"name":"Rajvardhan Hangargekar","nation":"India","role":"Fast Bowler","base":50,"set":"S15","setName":"Set 15","id":226},{"name":"Fred Klaassen","nation":"Netherlands","role":"Fast Bowler","base":50,"set":"S15","setName":"Set 15","id":227},{"name":"Himmat Singh","nation":"India","role":"Batter","base":50,"set":"S15","setName":"Set 15","id":228},{"name":"David Payne","nation":"England","role":"Fast Bowler","base":50,"set":"S15","setName":"Set 15","id":229},{"name":"Akshay Wadkar","nation":"India","role":"WK","base":50,"set":"S15","setName":"Set 15","id":230},{"name":"Michael Pepper","nation":"England","role":"WK","base":50,"set":"S15","setName":"Set 15","id":231},{"name":"Dhruv Shorey","nation":"India","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":232},{"name":"Laurie Evans","nation":"England","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":233},{"name":"Shubham Ranjane","nation":"India","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":234},{"name":"Ben Sears","nation":"New Zealand","role":"Fast Bowler","base":50,"set":"S16","setName":"Set 16","id":235},{"name":"Suyash Gharat","nation":"India","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":236},{"name":"Matthew Forde","nation":"West Indies","role":"All-rounder","base":50,"set":"S16","setName":"Set 16","id":237},{"name":"Karanveer Singh","nation":"India","role":"Spinner","base":50,"set":"S16","setName":"Set 16","id":238},{"name":"Hayden Walsh Jr","nation":"West Indies","role":"Spinner","base":50,"set":"S16","setName":"Set 16","id":239},{"name":"Prashant Solanki","nation":"India","role":"Spinner","base":50,"set":"S16","setName":"Set 16","id":240},{"name":"George Munsey","nation":"England","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":241},{"name":"Aniket Verma","nation":"India","role":"Batter","base":50,"set":"S16","setName":"Set 16","id":242},{"name":"Logan van Beek","nation":"Netherlands","role":"All-rounder","base":50,"set":"S16","setName":"Set 16","id":243},{"name":"Zak Crawley","nation":"England","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":244},{"name":"Sarfaraz Khan","nation":"India","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":245},{"name":"Jason Roy","nation":"England","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":246},{"name":"Shubham Khajuria","nation":"India","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":247},{"name":"Ben Duckett","nation":"England","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":248},{"name":"Karan Lal","nation":"India","role":"All-rounder","base":40,"set":"S17","setName":"Set 17","id":249},{"name":"George Dockrell","nation":"Ireland","role":"All-rounder","base":40,"set":"S17","setName":"Set 17","id":250},{"name":"Rajat Dey","nation":"India","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":251},{"name":"Leus du Plooy","nation":"England","role":"Batter","base":40,"set":"S17","setName":"Set 17","id":252},{"name":"Arshin Kulkarni","nation":"India","role":"All-rounder","base":40,"set":"S17","setName":"Set 17","id":253},{"name":"Paul Stirling","nation":"Ireland","role":"All-rounder","base":40,"set":"S17","setName":"Set 17","id":254},{"name":"Harvik Desai","nation":"India","role":"WK","base":40,"set":"S18","setName":"Set 18","id":255},{"name":"Matthew Hurst","nation":"Australia","role":"WK","base":40,"set":"S18","setName":"Set 18","id":256},{"name":"Bipin Saurabh","nation":"India","role":"WK","base":40,"set":"S18","setName":"Set 18","id":257},{"name":"Niroshan Dickwella","nation":"Sri Lanka","role":"WK","base":40,"set":"S18","setName":"Set 18","id":258},{"name":"Vivek Singh","nation":"India","role":"Batter","base":40,"set":"S18","setName":"Set 18","id":259},{"name":"Max Holden","nation":"England","role":"Batter","base":40,"set":"S18","setName":"Set 18","id":260},{"name":"Sachin Baby","nation":"India","role":"Batter","base":40,"set":"S18","setName":"Set 18","id":261},{"name":"Chris Lynn","nation":"Australia","role":"Batter","base":40,"set":"S18","setName":"Set 18","id":262},{"name":"Prerak Mankad","nation":"India","role":"All-rounder","base":40,"set":"S18","setName":"Set 18","id":263},{"name":"Jack Edwards","nation":"Australia","role":"All-rounder","base":40,"set":"S18","setName":"Set 18","id":264},{"name":"Akshat Raghuwanshi","nation":"India","role":"Batter","base":40,"set":"S18","setName":"Set 18","id":265},{"name":"Michael Leask","nation":"England","role":"All-rounder","base":40,"set":"S18","setName":"Set 18","id":266},{"name":"Ansh Goswami","nation":"India","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":267},{"name":"Will Smeed","nation":"England","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":268},{"name":"Manan Vohra","nation":"India","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":269},{"name":"Dawid Malan","nation":"England","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":270},{"name":"Kunal Chandela","nation":"India","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":271},{"name":"Tom Abell","nation":"England","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":272},{"name":"Shivalik Sharma","nation":"India","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":273},{"name":"Sarel Erwee","nation":"South Africa","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":274},{"name":"Urvil Patel","nation":"India","role":"WK","base":40,"set":"S19","setName":"Set 19","id":275},{"name":"Matthew Breetzke","nation":"South Africa","role":"WK","base":40,"set":"S19","setName":"Set 19","id":276},{"name":"Vishnu Vinod","nation":"India","role":"WK","base":40,"set":"S19","setName":"Set 19","id":277},{"name":"Joe Burns","nation":"Australia","role":"Batter","base":40,"set":"S19","setName":"Set 19","id":278},{"name":"Himanshu Mantri","nation":"India","role":"WK","base":40,"set":"S20","setName":"Set 20","id":279},{"name":"Ben Manenti","nation":"Australia","role":"All-rounder","base":40,"set":"S20","setName":"Set 20","id":280},{"name":"Sheldon Jackson","nation":"India","role":"WK","base":40,"set":"S20","setName":"Set 20","id":281},{"name":"Matthew Wade","nation":"Australia","role":"WK","base":40,"set":"S20","setName":"Set 20","id":282},{"name":"Akshay Chandran","nation":"India","role":"All-rounder","base":40,"set":"S20","setName":"Set 20","id":283},{"name":"Ollie Robinson","nation":"England","role":"WK","base":40,"set":"S20","setName":"Set 20","id":284},{"name":"Kshitiz Sharma","nation":"India","role":"Batter","base":40,"set":"S20","setName":"Set 20","id":285},{"name":"Matthew Critchley","nation":"England","role":"All-rounder","base":40,"set":"S20","setName":"Set 20","id":286},{"name":"Manisankar Murasingh","nation":"India","role":"All-rounder","base":40,"set":"S20","setName":"Set 20","id":287},{"name":"Hayden Kerr","nation":"Australia","role":"All-rounder","base":40,"set":"S20","setName":"Set 20","id":288},{"name":"Suyash More","nation":"India","role":"WK","base":40,"set":"S20","setName":"Set 20","id":289},{"name":"Tom Moores","nation":"England","role":"WK","base":40,"set":"S20","setName":"Set 20","id":290},{"name":"Ishan Porel","nation":"India","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":291},{"name":"Ebadot Hossain","nation":"Bangladesh","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":292},{"name":"Brandon Glover","nation":"Netherlands","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":293},{"name":"Arzan Nagwaswalla","nation":"India","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":294},{"name":"Mohammad Wasim Jr","nation":"Pakistan","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":295},{"name":"John Turner","nation":"Australia","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":296},{"name":"Tanzim Hasan Sakib","nation":"Bangladesh","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":297},{"name":"Yudhvir Singh","nation":"India","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":298},{"name":"Daryn Dupavillon","nation":"South Africa","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":299},{"name":"Aniket Choudhary","nation":"India","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":300},{"name":"George Scrimshaw","nation":"England","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":301},{"name":"Prithvi Raj Yarra","nation":"India","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":302},{"name":"Paul van Meekeren","nation":"Netherlands","role":"Fast Bowler","base":30,"set":"S21","setName":"Set 21","id":303},{"name":"Mayank Dagar","nation":"India","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":304},{"name":"Rehan Ahmed","nation":"England","role":"Spinner","base":30,"set":"S22","setName":"Set 22","id":305},{"name":"Pulkit Narang","nation":"India","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":306},{"name":"Mark Adair","nation":"Ireland","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":307},{"name":"Abhishek Dalhor","nation":"India","role":"Fast Bowler","base":30,"set":"S22","setName":"Set 22","id":308},{"name":"Karim Janat","nation":"Afghanistan","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":309},{"name":"Akash Vasisht","nation":"India","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":310},{"name":"Brandon Mavuta","nation":"Zimbabwe","role":"Spinner","base":30,"set":"S22","setName":"Set 22","id":311},{"name":"Shubhang Hegde","nation":"India","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":312},{"name":"Dhananjaya de Silva","nation":"Sri Lanka","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":313},{"name":"Mayank Mishra","nation":"India","role":"Spinner","base":30,"set":"S22","setName":"Set 22","id":314},{"name":"Ben Mike","nation":"England","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":315},{"name":"Abhishek Tanwar","nation":"India","role":"Fast Bowler","base":30,"set":"S22","setName":"Set 22","id":316},{"name":"Patrick Kruger","nation":"South Africa","role":"All-rounder","base":30,"set":"S22","setName":"Set 22","id":317},{"name":"Puru Pratap Singh","nation":"India","role":"Batter","base":30,"set":"S23","setName":"Set 23","id":318},{"name":"Danish Malewar","nation":"India","role":"Batter","base":30,"set":"S23","setName":"Set 23","id":319},{"name":"Matthew Gilkes","nation":"Australia","role":"WK","base":30,"set":"S23","setName":"Set 23","id":320},{"name":"Tim Murtagh","nation":"Ireland","role":"Fast Bowler","base":30,"set":"S23","setName":"Set 23","id":321},{"name":"Nuwanidu Fernando","nation":"Sri Lanka","role":"Batter","base":30,"set":"S23","setName":"Set 23","id":322},{"name":"Ben Lister","nation":"New Zealand","role":"Fast Bowler","base":30,"set":"S23","setName":"Set 23","id":323},{"name":"Matthew Parkinson","nation":"England","role":"Spinner","base":30,"set":"S23","setName":"Set 23","id":324},{"name":"Michael Rippon","nation":"New Zealand","role":"All-rounder","base":30,"set":"S23","setName":"Set 23","id":325},{"name":"Kamindu Mendis","nation":"Sri Lanka","role":"All-rounder","base":30,"set":"S23","setName":"Set 23","id":326},{"name":"Rishad Hossain","nation":"Bangladesh","role":"Spinner","base":30,"set":"S23","setName":"Set 23","id":327},{"name":"Tanzid Hasan Tamim","nation":"Bangladesh","role":"Batter","base":30,"set":"S23","setName":"Set 23","id":328},{"name":"Tom Latham","nation":"New Zealand","role":"WK","base":30,"set":"S24","setName":"Set 24","id":329},{"name":"Shayan Jahangir","nation":"USA","role":"WK","base":30,"set":"S24","setName":"Set 24","id":330},{"name":"Colin Ingram","nation":"South Africa","role":"Batter","base":30,"set":"S24","setName":"Set 24","id":331},{"name":"Suryansh Shedge","nation":"India","role":"All-rounder","base":30,"set":"S24","setName":"Set 24","id":332},{"name":"Tom Prest","nation":"England","role":"All-rounder","base":30,"set":"S24","setName":"Set 24","id":333},{"name":"Arshad Khan","nation":"India","role":"Fast Bowler","base":30,"set":"S24","setName":"Set 24","id":334},{"name":"Abhimanyu Puranik","nation":"India","role":"Batter","base":30,"set":"S24","setName":"Set 24","id":335},{"name":"Daniel Sams","nation":"Australia","role":"All-rounder","base":30,"set":"S24","setName":"Set 24","id":336},{"name":"Yashvardhan Dalal","nation":"India","role":"Batter","base":30,"set":"S24","setName":"Set 24","id":337},{"name":"Chris Green","nation":"Australia","role":"All-rounder","base":30,"set":"S24","setName":"Set 24","id":338},{"name":"Chetan Bist","nation":"India","role":"WK","base":30,"set":"S25","setName":"Set 25","id":339},{"name":"Corey Anderson","nation":"New Zealand","role":"All-rounder","base":30,"set":"S25","setName":"Set 25","id":340},{"name":"Harsh Gawali","nation":"India","role":"WK","base":30,"set":"S25","setName":"Set 25","id":341},{"name":"Mark Chapman","nation":"New Zealand","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":342},{"name":"Saurabh Tiwary","nation":"India","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":343},{"name":"Colin de Grandhomme","nation":"New Zealand","role":"All-rounder","base":30,"set":"S25","setName":"Set 25","id":344},{"name":"Prashant Chopra","nation":"India","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":345},{"name":"Sean Williams","nation":"Zimbabwe","role":"All-rounder","base":30,"set":"S25","setName":"Set 25","id":346},{"name":"Vivek Tiwari","nation":"India","role":"Fast Bowler","base":30,"set":"S25","setName":"Set 25","id":347},{"name":"Rajat Paliwal","nation":"India","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":348},{"name":"Chris Jordan","nation":"England","role":"All-rounder","base":30,"set":"S25","setName":"Set 25","id":349},{"name":"Tejasvi Jaiswal","nation":"India","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":350},{"name":"Adam Hose","nation":"England","role":"Batter","base":30,"set":"S25","setName":"Set 25","id":351},{"name":"Chama Milind","nation":"India","role":"Fast Bowler","base":30,"set":"S25","setName":"Set 25","id":352},{"name":"Lahiru Kumara","nation":"Sri Lanka","role":"Fast Bowler","base":30,"set":"S25","setName":"Set 25","id":353},{"name":"Harsh Tyagi","nation":"India","role":"All-rounder","base":30,"set":"S26","setName":"Set 26","id":354},{"name":"Michael Neser","nation":"Australia","role":"All-rounder","base":30,"set":"S26","setName":"Set 26","id":355}];
+const TEAMS = [
+ {c:'RCB',o:'Ansh',col:'#e3262e'},{c:'MI',o:'Kenvas',col:'#2f86f0'},{c:'KKR',o:'Aditya',col:'#9a6bf0'},
+ {c:'DC',o:'Bhaiwela',col:'#4cc9f0'},{c:'CSK',o:'Itnagram',col:'#f7c522'},{c:'GT',o:'Shrini',col:'#7f9bd0'},
+ {c:'LSG',o:'Sheersh',col:'#1fc9a6'},{c:'RR',o:'Surya',col:'#f0529c'},{c:'SRH',o:'Ayush',col:'#ff8a1f'},{c:'PBKS',o:'Raj',col:'#a3e635'}];
+const SETORDER = ['M1','M2','M3'].concat(Array.from({length:26},(_,i)=>'S'+(i+1)));
+const ROLES = ['Batter','WK','Fast Bowler','Spinner','All-rounder'];
+const RL = {'Batter':'Batter','WK':'WK-Batter','Fast Bowler':'Fast Bowler','Spinner':'Spinner','All-rounder':'All-rounder'};
+const RS = {'Batter':'BAT','WK':'WK','Fast Bowler':'PACE','Spinner':'SPIN','All-rounder':'AR'};
+const NEED = {'Batter':6,'WK':2,'Fast Bowler':6,'Spinner':3,'All-rounder':5};
+const NC = {'India':'IND','Australia':'AUS','South Africa':'RSA','Afghanistan':'AFG','England':'ENG','West Indies':'WI','New Zealand':'NZ','Sri Lanka':'SL','Bangladesh':'BAN','Pakistan':'PAK','Zimbabwe':'ZIM','Ireland':'IRE','Namibia':'NAM','Netherlands':'NED','USA':'USA'};
+const PURSE=12000, MINSQ=18, MAXSQ=25, MINBASE=30, OSMAX=8, KEY='gcspl_auction_v2', DKEY='gcspl_device_v1';
+const P = id => PLAYERS[id-1];
+const T = c => TEAMS.find(t=>t.c===c);
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a };
+const fmt = L => L>=100 ? '₹'+(L%100===0 ? L/100 : (L/100).toFixed(2))+' Cr' : '₹'+L+' L';
+const fmtS = L => '₹'+(+(L/100).toFixed(2))+'Cr';
+const spoken = L => { const c=Math.floor(L/100), l=L%100; return [c?c+' crore':'', l?l+' lakh':''].filter(Boolean).join(' ') };
+const inc = L => L<100?5 : L<200?10 : L<500?20 : 25;
+const sayTeam = c => c.split('').join(' ');
 
-        <!-- Player Photo -->
-        <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-amber-400/60 shadow-2xl mb-3 bg-slate-900 flex items-center justify-center">
-          <img id="playerPhotoImg" src="" alt="Player" class="w-full h-full object-cover">
-          <div id="jerseyFallback" class="hidden flex-col items-center justify-center w-full h-full bg-gradient-to-br from-blue-900 to-indigo-950">
-            <span class="text-4xl">🏏</span>
-            <span id="jerseyInitials" class="text-lg font-black text-amber-300 mt-1">VK</span>
-          </div>
-        </div>
+/* ---------- roles & connection ---------- */
+let socket=null, ME=null, IS_HOST=false, LIVEMODE=true, netState='connecting', PRES={}, HOST_ONLINE=false, CRED=null, hostReady=false;   // netState: connecting | live | error
+let lastSend=0;
+const DEV = (()=>{ try{ return Object.assign({voice:true,sfx:true},JSON.parse(localStorage.getItem(DKEY)||'{}')) }catch(e){ return {voice:true,sfx:true} } })();
+const saveDev = () => { try{ localStorage.setItem(DKEY,JSON.stringify(DEV)) }catch(e){} };
 
-        <h2 id="playerNameText" class="text-2xl sm:text-3xl font-black text-white tracking-wide">Virat Kohli</h2>
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
-          <span id="playerRoleBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Batter</span>
-          <span id="playerCountryBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🇮🇳 India</span>
-          <span id="playerBasePriceBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">Base: ₹2.00 Cr</span>
-        </div>
+/* ---------- state ---------- */
+function fresh(){
+  const queues={}; SETORDER.forEach(k=>queues[k]=shuffle(PLAYERS.filter(p=>p.set===k).map(p=>p.id)));
+  return {v:2,phase:'main',setIdx:0,queues,accel:[],cur:null,sold:[],unsold:[],
+    teams:Object.fromEntries(TEAMS.map(t=>[t.c,{purse:PURSE,squad:[]}])),
+    settings:{os:true,auto:true,secs:15,ai:{}}};
+}
+let S = fresh();
+let tab='teams', selTeam='RCB', drawerOpen=false, dl=0, tickSay={}, aiVal={}, lastAI=0, poolQ='', poolSet='', poolSt='';
+let LIVE_SAY=null, LIVE_SALE=null, rev=0, seenSay=null, seenSale=null, gotMain=false, gotLive=false;
+function loadLocal(){ try{ const r=localStorage.getItem(KEY); if(!r) return null; const s=JSON.parse(r); if(s&&s.v===2&&s.teams) return s }catch(e){} return null }
+function saveLocal(){ if(!IS_HOST) return; try{ if(S.cur&&!S.cur.paused&&S.cur.bids.length) S.cur.remain=Math.max(0,dl-Date.now()); localStorage.setItem(KEY,JSON.stringify(S)) }catch(e){} }
 
-        <!-- CURRENT HIGHEST BID SPOTLIGHT -->
-        <div class="w-full mt-4 p-4 rounded-xl bg-slate-950/90 border border-amber-500/40 active-bid-pulse">
-          <div class="text-[11px] uppercase font-extrabold text-amber-400 tracking-widest mb-1">CURRENT HIGHEST BID</div>
-          <div id="highestBidAmountText" class="text-3xl sm:text-5xl font-black font-cinzel text-emerald-400">₹2.00 Cr</div>
-          <div id="highestBidTeamText" class="text-sm sm:text-base font-bold text-slate-200 mt-1">Base Price (Waiting for Opening Bid)</div>
-          <div id="yourTeamLeadNotice" class="hidden mt-2 text-xs font-bold text-emerald-400 bg-emerald-500/20 py-1 px-2 rounded-md">
-            🟢 YOUR TEAM HOLDS THE HIGHEST BID!
-          </div>
-        </div>
+/* ---------- team math ---------- */
+const squadP = c => S.teams[c].squad.map(x=>P(x.pid));
+const osCount = c => squadP(c).filter(p=>p.nation!=='India').length;
+const roleCount = (c,r) => squadP(c).filter(p=>p.role===r).length;
+const maxBid = c => { const t=S.teams[c]; return t.purse - MINBASE*Math.max(0,MINSQ-1-t.squad.length) };
+function lockReason(c){ const t=S.teams[c]; if(t.squad.length>=MAXSQ) return 'Squad full'; if(maxBid(c)<MINBASE) return 'Purse locked'; return '' }
+function bidReason(c,amt,p){
+  const r=lockReason(c); if(r) return r;
+  if(amt>maxBid(c)) return 'Max bid '+fmt(maxBid(c));
+  if(S.settings.os && p.nation!=='India' && osCount(c)>=OSMAX) return 'Overseas 8/8';
+  return '';
+}
+const leader = () => S.cur && S.cur.bids.length ? S.cur.bids[S.cur.bids.length-1] : null;
+const nextAmt = () => { const l=leader(); return l ? l.amt+inc(l.amt) : P(S.cur.pid).base };
+const myTeam = () => IS_HOST ? undefined : (ME||undefined);
 
-      </div>
-    </div>
+/* ---------- voice, sfx ---------- */
+let VOICE=null;
+function pickVoice(){ if(!('speechSynthesis' in window)) return; const v=speechSynthesis.getVoices();
+  VOICE = v.find(x=>/en[-_]IN/i.test(x.lang)&&/female|heera|neerja|veena|swara|google/i.test(x.name)) || v.find(x=>/en[-_]IN/i.test(x.lang)) || v.find(x=>/hi[-_]IN/i.test(x.lang)) || v.find(x=>/en/i.test(x.lang)&&/female|zira|samantha|google/i.test(x.name)) || null }
+if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice }
+let talkT;
+function localSay(t,brief){
+  $('#bubble').textContent=t; const h=$('#host'); h.classList.add('talk'); clearTimeout(talkT); talkT=setTimeout(()=>h.classList.remove('talk'),Math.min(6000,900+t.length*55));
+  if(!DEV.voice||!('speechSynthesis' in window)) return;
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(brief||t); u.lang=VOICE?VOICE.lang:'en-IN'; if(VOICE)u.voice=VOICE; u.rate=1.03; u.pitch=1.15; u.onend=()=>h.classList.remove('talk'); speechSynthesis.speak(u) }catch(e){}
+}
+function say(t,brief){ localSay(t,brief); if(IS_HOST){ LIVE_SAY={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),text:t,brief:brief||t}; push('live') } }
+let AC; const ac=()=>{ try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume() }catch(e){} return AC };
+function tone(f1,f2,d,type,v){ if(!DEV.sfx) return; const a=ac(); if(!a) return; const o=a.createOscillator(),g=a.createGain(),n=a.currentTime; o.type=type; o.frequency.setValueAtTime(f1,n); o.frequency.exponentialRampToValueAtTime(f2,n+d); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(.001,n+d); o.connect(g); g.connect(a.destination); o.start(n); o.stop(n+d) }
+function noise(d,v,fc,swell){ if(!DEV.sfx) return; const a=ac(); if(!a) return; const b=a.createBuffer(1,Math.floor(a.sampleRate*d),a.sampleRate),x=b.getChannelData(0); for(let i=0;i<x.length;i++) x[i]=Math.random()*2-1;
+  const s=a.createBufferSource(); s.buffer=b; const f=a.createBiquadFilter(); f.type='bandpass'; f.frequency.value=fc; const g=a.createGain(),n=a.currentTime;
+  if(swell){ g.gain.setValueAtTime(.001,n); g.gain.linearRampToValueAtTime(v,n+d*.35); g.gain.linearRampToValueAtTime(.001,n+d) } else { g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(.001,n+d) }
+  s.connect(f); f.connect(g); g.connect(a.destination); s.start(n) }
+const sfxBid = () => tone(520,760,.09,'square',.12);
+const sfxGavel = () => { tone(220,50,.18,'triangle',.9); noise(.08,.7,1800); setTimeout(()=>{tone(200,45,.2,'triangle',1); noise(.1,.8,1500)},240) };
+const sfxCheer = () => noise(1.8,.5,1100,true);
+const cv=$('#confetti'), cx=cv.getContext('2d'); let parts=[], raf=0;
+function confetti(col){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  cv.width=innerWidth; cv.height=innerHeight; const cols=[col,'#f2b632','#ffffff','#3ddc97','#4cc9f0'];
+  parts=Array.from({length:150},()=>({x:innerWidth/2+(Math.random()-.5)*200,y:innerHeight*.45,vx:(Math.random()-.5)*16,vy:-Math.random()*15-3,s:5+Math.random()*7,c:cols[Math.floor(Math.random()*cols.length)],r:Math.random()*6,vr:(Math.random()-.5)*.4}));
+  cancelAnimationFrame(raf); const t0=performance.now();
+  (function step(now){ cx.clearRect(0,0,cv.width,cv.height); parts.forEach(p=>{p.vy+=.45;p.x+=p.vx;p.y+=p.vy;p.vx*=.99;p.r+=p.vr;cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx.restore()});
+    if(now-t0<2800) raf=requestAnimationFrame(step); else cx.clearRect(0,0,cv.width,cv.height) })(t0);
+}
+let toastT; function toast(m){ const e=$('#toast'); e.textContent=m; e.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>e.hidden=true,2600) }
+function soldFx(pid,team,price){
+  const tm=T(team), ov=$('#soldov'); ov.style.setProperty('--tc',tm.col); $('#soldTxt').textContent=P(pid).name+' → '+team+' · '+fmt(price);
+  ov.classList.add('on'); setTimeout(()=>ov.classList.remove('on'),2600);
+  const h=$('#host'); h.classList.remove('hit'); void h.offsetWidth; h.classList.add('hit'); setTimeout(()=>h.classList.remove('hit'),1100);
+  sfxGavel(); setTimeout(sfxCheer,350); confetti(tm.col);
+}
 
-    <!-- RIGHT 5 COLS: COMMENTARY & HOST CONTROLS -->
-    <div class="lg:col-span-5 flex flex-col gap-4">
-      <div class="glass-card rounded-2xl p-4 gold-border flex-1 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
-            <div class="flex items-center gap-2">
-              <div class="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center text-lg">👩‍⚖️</div>
-              <div>
-                <div class="text-xs font-bold text-amber-300">MALLIKA SAGAR (AI HOST)</div>
-                <div class="text-[10px] text-emerald-400">Calm & Realistic Pacing</div>
-              </div>
-            </div>
-            <button onclick="toggleLanguage()" id="langToggleBtn" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 font-bold">
-              🇮🇳 Voice: Hindi
-            </button>
-          </div>
+/* ---------- sync (host writes, everyone reads) ---------- */
+const W={main:{busy:false,pend:false},live:{busy:false,pend:false}};
+const clean = o => JSON.parse(JSON.stringify(o));
+function mainDoc(){ return clean({v:2,phase:S.phase,setIdx:S.setIdx,queues:S.queues,accel:S.accel,sold:S.sold,unsold:S.unsold,teams:S.teams,settings:S.settings}) }
+function liveDoc(){ return clean({cur:S.cur?{pid:S.cur.pid,bids:S.cur.bids,paused:!!S.cur.paused,remain:S.cur.paused?(S.cur.remain||0):0}:null,t:Date.now(),deadline:dl,say:LIVE_SAY,sale:LIVE_SALE,rev:++rev}) }
+function push(name){
+  if(!IS_HOST||!socket||!socket.connected) return; const w=W[name]; if(w.busy){ w.pend=true; return } w.busy=true;
+  (async()=>{ do{ w.pend=false; try{ await new Promise((res,rej)=>{ const t=setTimeout(()=>rej(new Error('timeout')),8000); socket.emit('host:push',{name,doc:name==='main'?mainDoc():liveDoc()},r=>{ clearTimeout(t); r&&r.ok?res():rej(new Error('rejected')) }) }); if(netState==='error'){netState='live';renderHeader()} }catch(e){ netState='error'; renderHeader(); console.warn('sync',e&&e.code) } }while(w.pend); w.busy=false })();
+}
+function commit(m,l){ saveLocal(); if(m) push('main'); if(l) push('live') }
 
-          <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 min-h-[130px] flex flex-col justify-between">
-            <p id="liveCommentarySpeech" class="text-sm font-medium text-amber-200 leading-relaxed italic">
-              "Welcome to the GCSPL Mega Auction. Awaiting Host initialization to begin the proceedings."
-            </p>
-            <div class="flex justify-between items-center text-[10px] text-slate-500 mt-3 pt-2 border-t border-slate-900">
-              <span id="timerStateSubtext">Status: Waiting in Lobby</span>
-              <span>30s Initial / 20s Reset</span>
-            </div>
-          </div>
-        </div>
+/* player side: apply snapshots */
+function applyMain(d){
+  ['phase','setIdx','queues','accel','sold','unsold','teams','settings'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k] });
+  gotMain=true; renderAll();
+}
+function applyLive(d){
+  const prevPid=S.cur&&S.cur.pid, prevN=S.cur?S.cur.bids.length:0;
+  S.cur=d.cur?{pid:d.cur.pid,bids:d.cur.bids||[],paused:d.cur.paused,remain:d.cur.remain}:null;
+  dl = S.cur&&!S.cur.paused&&S.cur.bids.length ? Date.now()+(d.deadline-d.t) : 0;
+  const first=!gotLive; gotLive=true;
+  if(first){ seenSay=d.say&&d.say.id; seenSale=d.sale&&d.sale.id }
+  else {
+    if(d.say&&d.say.id!==seenSay){ seenSay=d.say.id; localSay(d.say.text,d.say.brief) }
+    if(d.sale&&d.sale.id!==seenSale){ seenSale=d.sale.id; soldFx(d.sale.pid,d.sale.team,d.sale.price) }
+    else if(S.cur&&S.cur.pid===prevPid&&S.cur.bids.length>prevN) sfxBid();
+  }
+  tickSay={}; renderAll();
+}
 
-        <!-- HOST ADMIN PANEL -->
-        <div id="hostAdminControls" class="hidden mt-4 pt-3 border-t border-slate-800">
-          <div class="text-[11px] font-extrabold uppercase text-amber-400 mb-2 flex items-center justify-between">
-            <span>⚡ Host Control Desk</span>
-            <span class="text-[10px] text-slate-400">Admin Mode</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="startAuctionByHost()" id="hostMainStartBtn" class="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 font-black text-xs uppercase shadow-md">
-              🚀 Start Auction
-            </button>
-            <button onclick="drawRandomPlayer()" class="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md">
-              🎲 Draw Random Player
-            </button>
-            <button onclick="togglePauseAuction()" id="pauseResumeBtn" class="py-2 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs">
-              ⏸️ Pause Timer
-            </button>
-            <button onclick="hammerSoldManual()" class="py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs">
-              🔨 Sell Now (SOLD)
-            </button>
-            <button onclick="markUnsoldManual()" class="col-span-2 py-2 px-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-bold text-xs">
-              ❌ Mark UNSOLD
-            </button>
-          </div>
-        </div>
+/* ---------- auction flow (host) ---------- */
+function nextPlayer(){
+  if(!IS_HOST) return;
+  if(S.cur){ toast('Finish the current player first (Sold or Unsold).'); return }
+  let pid=null;
+  if(S.phase==='main'){
+    while(S.setIdx<SETORDER.length && !S.queues[SETORDER[S.setIdx]].length) S.setIdx++;
+    if(S.setIdx>=SETORDER.length){ S.phase = S.unsold.length ? 'main_end' : 'done' } else pid=S.queues[SETORDER[S.setIdx]].pop();
+  } else if(S.phase==='accel'){ if(S.accel.length) pid=S.accel.pop(); else S.phase='done' }
+  if(pid===null){
+    commit(1,1); renderAll();
+    if(S.phase==='main_end') say('All sets are done. '+S.unsold.length+' players are unsold. Start the accelerated auction when you are ready.');
+    else say('The auction is complete. Thank you everyone!');
+    return;
+  }
+  const p=P(pid);
+  S.cur={pid,bids:[],paused:false,remain:S.settings.secs*1000}; dl=0; tickSay={}; aiVal={}; computeAI();
+  commit(1,1); renderAll(); const lot=$('#lot'); lot.classList.remove('pop'); void lot.offsetWidth; lot.classList.add('pop');
+  say('Next up, '+p.name+', '+RL[p.role]+' '+(p.nation==='India'?'from India':'from '+p.nation)+'. Base price '+spoken(p.base)+'. Who will start the bidding?');
+}
+function placeBid(c,quiet){
+  if(!IS_HOST||!S.cur) return; const l=leader(); if(l&&l.t===c) return;
+  const amt=nextAmt(), p=P(S.cur.pid), why=bidReason(c,amt,p);
+  if(why){ if(!quiet) toast(c+': '+why); return }
+  S.cur.bids.push({t:c,amt}); S.cur.paused=false; dl=Date.now()+S.settings.secs*1000; tickSay={};
+  saveLocal(); renderAll(); sfxBid();
+  say(c+' bids '+fmt(amt)+'.', spoken(amt)+', '+sayTeam(c)+'.'); push('live');
+}
+function undoBid(){
+  if(!IS_HOST||!S.cur||!S.cur.bids.length) return; S.cur.bids.pop(); tickSay={};
+  dl = S.cur.bids.length ? Date.now()+S.settings.secs*1000 : 0;
+  saveLocal(); renderAll(); say('Bid withdrawn.'); push('live');
+}
+function togglePause(){
+  if(!IS_HOST||!S.cur||!S.cur.bids.length) return;
+  if(S.cur.paused){ S.cur.paused=false; dl=Date.now()+S.cur.remain } else { S.cur.remain=Math.max(0,dl-Date.now()); S.cur.paused=true }
+  commit(0,1); renderAll();
+}
+function sell(){
+  if(!IS_HOST) return; const l=leader(); if(!S.cur||!l){ toast('There are no bids yet.'); return }
+  const p=P(S.cur.pid), t=S.teams[l.t];
+  t.purse-=l.amt; t.squad.push({pid:p.id,price:l.amt});
+  if(S.sold.length) delete S.sold[S.sold.length-1].bids;
+  S.sold.push({pid:p.id,team:l.t,price:l.amt,round:S.phase==='accel'?'Accelerated':p.setName,bids:S.cur.bids.slice()});
+  S.unsold=S.unsold.filter(x=>x!==p.id);
+  S.cur=null; dl=0;
+  LIVE_SALE={id:Date.now()+'-'+p.id,pid:p.id,team:l.t,price:l.amt}; seenSale=LIVE_SALE.id;
+  soldFx(p.id,l.t,l.amt); renderAll();
+  say('Sold! '+p.name+' goes to '+l.t+', '+T(l.t).o+', for '+fmt(l.amt)+'.', 'Sold! '+p.name+' goes to '+sayTeam(l.t)+' for '+spoken(l.amt)+'!');
+  commit(1,1);
+}
+function markUnsold(){
+  if(!IS_HOST||!S.cur) return; if(S.cur.bids.length){ toast('A bid is already placed. Undo the bid first.'); return }
+  const id=S.cur.pid; if(!S.unsold.includes(id)) S.unsold.push(id);
+  S.cur=null; dl=0; renderAll(); sfxGavel(); say('No bids. '+P(id).name+' goes unsold.'); commit(1,1);
+}
+function undoSale(){
+  if(!IS_HOST) return;
+  if(S.cur){ toast('Finish the current player before undoing a sale.'); return }
+  const s=S.sold.pop(); if(!s){ toast('There is no sale to undo.'); return }
+  const t=S.teams[s.team]; t.squad=t.squad.filter(x=>x.pid!==s.pid); t.purse+=s.price;
+  S.cur={pid:s.pid,bids:s.bids||[],paused:true,remain:S.settings.secs*1000}; dl=0; aiVal={};
+  if(s.round==='Accelerated') S.phase='accel'; else if(S.phase==='done') S.phase='main_end';
+  renderAll(); say('Sale reversed. '+P(s.pid).name+' is back on the block. Resume the timer when ready.'); commit(1,1);
+}
+function startAccel(){ if(!IS_HOST) return; S.phase='accel'; S.accel=shuffle(S.unsold); renderAll(); say('Accelerated auction begins with '+S.accel.length+' players.'); commit(1,1) }
 
-        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-300">📊 10 Teams Purse & Squads</span>
-          <button onclick="toggleLeaderboardModal(true)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-500/30">
-            View Full Table
-          </button>
-        </div>
+/* AI franchises (host only) */
+function computeAI(){
+  if(!S.cur) return; const p=P(S.cur.pid); const hi=p.base>=200?5.5:p.base>=150?3.5:p.base>=100?3:2.4;
+  TEAMS.forEach(t=>{ if(!S.settings.ai[t.c]) return; const sq=S.teams[t.c].squad.length;
+    const need=roleCount(t.c,p.role)<NEED[p.role]?1.35:.6; const v=p.base*(1+Math.random()*(hi-1))*need;
+    const cap=Math.max(p.base,(S.teams[t.c].purse-MINBASE*Math.max(0,MINSQ-1-sq))*(sq<MINSQ?.3:.2));
+    aiVal[t.c]=Math.round(Math.min(v,cap,maxBid(t.c))/5)*5 });
+}
+function aiTick(){
+  if(!S.cur||S.cur.paused) return; const n=nextAmt(), p=P(S.cur.pid), l=leader();
+  const c=shuffle(TEAMS.filter(t=>S.settings.ai[t.c]&&!PRES[t.c]&&(!l||l.t!==t.c)&&aiVal[t.c]!==undefined&&aiVal[t.c]>=n&&!bidReason(t.c,n,p)));
+  if(c.length&&Math.random()<.55) placeBid(c[0].c,true);
+}
 
-      </div>
-    </div>
+/* requests from players (host) */
+function handleReq(team,d){
+  if(!hostReady||!T(team)||!S.cur||S.cur.paused) return;
+  if(S.cur.pid!==d.pid||nextAmt()!==d.amt) return;
+  placeBid(team,true);
+}
 
-  </main>
+/* ---------- player actions ---------- */
+function playerBid(){
+  const t=myTeam(); if(!t||!S.cur||!socket) return;
+  if(!HOST_ONLINE){ toast('The host is offline.'); return }
+  const amt=nextAmt(), why=bidReason(t,amt,P(S.cur.pid)), l=leader();
+  if(why){ toast(why); return } if(l&&l.t===t) return;
+  if(Date.now()-lastSend<400) return; lastSend=Date.now(); sfxBid();
+  socket.emit('bid',{pid:S.cur.pid,amt},r=>{ if(r&&!r.ok) toast(r.error==='host-offline'?'The host is offline.':'Your bid was not accepted.') });
+}
 
-  <!-- STICKY BOTTOM MOBILE PADDLE BAR -->
-  <div class="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 border-t border-amber-500/40 backdrop-blur-lg z-40">
-    <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
-      <div class="flex flex-col">
-        <span class="text-[10px] text-slate-400 uppercase font-bold" id="myTeamPurseLabel">Not Logged In</span>
-        <span class="text-sm sm:text-base font-extrabold text-amber-300 font-cinzel" id="myTeamRemainingPurse">Tap Login 🔑</span>
-      </div>
+/* ---------- timer loop ---------- */
+setInterval(()=>{
+  if(!S.cur) return; const b=S.cur.bids.length, secs=S.settings.secs;
+  let rem = !b ? secs*1000 : S.cur.paused ? (S.cur.remain||0) : dl-Date.now();
+  if(IS_HOST && b && !S.cur.paused){
+    if(rem<=secs*1000*2/3 && !tickSay.once){ tickSay.once=1; const l=leader(); say('Going once at '+fmt(l.amt)+' to '+l.t+'.','Going once, '+spoken(l.amt)+', '+sayTeam(l.t)); tone(400,380,.12,'sine',.2) }
+    if(rem<=secs*1000/3 && !tickSay.twice){ tickSay.twice=1; say('Going twice...','Going twice.'); tone(400,340,.14,'sine',.25) }
+    if(rem<=0 && S.settings.auto){ sell(); return }
+  }
+  paintTimer(Math.max(0,rem));
+  if(IS_HOST && !S.cur.paused && Date.now()-lastAI>1100){ lastAI=Date.now(); aiTick() }
+},100);
+function paintTimer(rem){
+  const fg=$('#ringfg'); if(!fg||!S.cur) return; const secs=S.settings.secs, b=S.cur.bids.length;
+  const f=b?Math.min(1,rem/(secs*1000)):1; fg.style.strokeDashoffset=(1-f)*289;
+  $('#ringtxt').textContent = b ? Math.ceil(rem/1000) : '–';
+  let cls='status',tx=b?'Bidding open':'Waiting for first bid';
+  if(b){ if(S.cur.paused) tx='Timer paused'; else if(rem<=secs*1000/3){cls+=' twice';tx='Going twice...'} else if(rem<=secs*1000*2/3){cls+=' once';tx='Going once...'} }
+  const st=$('#status'); st.className=cls; st.textContent=tx;
+}
 
-      <button id="raisePaddleBtn" onclick="submitBid()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 active:scale-95 transition">
-        <span>🙋</span>
-        <span id="bidPaddleBtnText">RAISE PADDLE</span>
-      </button>
-    </div>
-  </div>
+/* ---------- render ---------- */
+const badge = c => '<span class="badge" style="background:'+T(c).col+'">'+c.slice(0,4)+'</span>';
+function renderAll(){ renderHeader(); renderLot(); renderBid(); renderPaddles(); renderBar(); if(drawerOpen) renderDrawer() }
+function renderHeader(){
+  const dot=$('#dot'); dot.className='dot'+(netState==='live'?' on':netState==='error'?' err':'');
+  const n=Object.keys(PRES).filter(k=>PRES[k]>0).length; let t;
+  if(netState==='connecting') t='Connecting...'; else if(netState==='error') t='Connection lost. Reconnecting...';
+  else if(IS_HOST) t='LIVE · Host · '+n+'/10 owners online';
+  else { const m=myTeam(); t = m ? (HOST_ONLINE?'LIVE · ':'Host offline · ')+m+' ('+T(m).o+')' : (HOST_ONLINE?'LIVE · Watching':'Host offline · Watching') }
+  $('#whoTxt').textContent=t;
+}
+function renderLot(){
+  const el=$('#lot');
+  if(!S.cur){
+    let h='Ready for the next lot', sub=IS_HOST?'Press Next Player. A random player is drawn from the current set.':'The host will draw the next player. Get ready.';
+    if(S.phase==='main_end'){ h='Main auction complete'; sub=S.unsold.length+' players are unsold.' }
+    if(S.phase==='done'){ h='Auction complete'; sub='Open Menu > Teams to see the squads.' }
+    const k=SETORDER[Math.min(S.setIdx,SETORDER.length-1)]; let left=0; for(let i=S.setIdx;i<SETORDER.length;i++) left+=S.queues[SETORDER[i]].length;
+    el.innerHTML='<div class="empty"><b>'+h+'</b><span>'+sub+'</span>'+(S.phase==='main'?'<span class="num">Up next: '+(k[0]==='M'?'Marquee '+k.slice(1):'Set '+k.slice(1))+' · '+left+' players left · '+S.sold.length+' sold</span>':'')+
+      (IS_HOST&&S.phase==='main_end'&&S.unsold.length?'<div><button class="btn pri" data-act="accel">Accelerated Auction ('+S.unsold.length+')</button></div>':'')+'</div>'; return }
+  const p=P(S.cur.pid), os=p.nation!=='India', left=S.phase==='accel'?S.accel.length:(S.queues[p.set]||[]).length;
+  el.innerHTML='<div class="lotset"><span>'+(S.phase==='accel'?'Accelerated round':p.setName)+'</span><span class="num">#'+p.id+' · '+left+' left in set</span></div>'+
+    '<h2 class="pname">'+esc(p.name)+'</h2>'+
+    '<div class="tags"><span class="tag '+(os?'os':'in')+'">'+NC[p.nation]+(os?' · Overseas':' · Indian')+'</span><span class="tag">'+RL[p.role]+'</span></div>'+
+    '<div class="base"><small>Base price</small><strong class="num">'+fmt(p.base)+'</strong></div>';
+}
+function renderBid(){
+  const el=$('#bidbox');
+  if(!S.cur){ el.innerHTML='<div class="empty"><b>No live bid</b><span>Steps: ₹30L–1Cr +5L, ₹1–2Cr +10L, ₹2–5Cr +20L, ₹5Cr+ +25L.</span></div>'; return }
+  const l=leader(), n=nextAmt(), cur=l?l.amt:P(S.cur.pid).base;
+  el.innerHTML='<div class="bidtop"><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="var(--line)" stroke-width="7"/><circle id="ringfg" cx="50" cy="50" r="46" fill="none" stroke="var(--gold)" stroke-width="7" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="0"/></svg><div class="t num" id="ringtxt">–</div></div>'+
+   '<div class="cur"><small>'+(l?'Current bid':'Opening price')+'</small><strong class="num">'+fmt(cur)+'</strong>'+(l?'<span class="leader">'+badge(l.t)+T(l.t).o+' ('+l.t+')</span>':'<span class="leader" style="color:var(--mute)">No bids yet</span>')+'</div></div>'+
+   '<div class="status" id="status"></div>'+
+   '<div class="incnote num">'+(l?'Next bid '+fmt(n)+' (+'+fmt(inc(l.amt))+')':'First bid at base '+fmt(n))+'</div>'+
+   '<div class="bidlog">'+S.cur.bids.slice(-4).reverse().map(b=>'<span class="bl num" style="border-color:'+T(b.t).col+'">'+b.t+' '+fmtS(b.amt)+'</span>').join('')+'</div>';
+  paintTimer(S.cur.bids.length?(S.cur.paused?(S.cur.remain||0):Math.max(0,dl-Date.now())):S.settings.secs*1000);
+}
+function renderPaddles(){
+  const n=S.cur?nextAmt():0, p=S.cur?P(S.cur.pid):null, l=S.cur?leader():null, me=myTeam();
+  $('#paddles').innerHTML=TEAMS.map(t=>{
+    const lock=lockReason(t.c), tm=S.teams[t.c]; let st='';
+    if(lock) st=lock; else if(l&&l.t===t.c) st='Leading'; else if(S.cur){ st=bidReason(t.c,n,p) } else st='Max '+fmtS(maxBid(t.c));
+    return '<button class="pad'+(lock?' lock':'')+(l&&l.t===t.c?' lead':'')+(me===t.c?' me':'')+(PRES[t.c]?' on':'')+(S.settings.ai[t.c]&&IS_HOST?' ai':'')+'" style="--tc:'+t.col+'" data-pad="'+t.c+'" title="'+t.o+'"><span class="r1">'+badge(t.c)+'<span><span class="nm">'+t.c+'</span><span class="ow">'+t.o+'</span></span></span><span class="pu num">'+fmtS(tm.purse)+'</span><span class="ct num">'+tm.squad.length+'/25 · OS '+osCount(t.c)+'</span><span class="st">'+esc(st)+'</span></button>';
+  }).join('');
+}
+function renderBar(){
+  const el=$('#bar');
+  if(IS_HOST){
+    const c=S.cur, b=c&&c.bids.length;
+    el.innerHTML='<button class="btn pri big" data-act="next"'+(c||S.phase==='main_end'||S.phase==='done'?' disabled':'')+'>Next Player</button>'+
+      '<button class="btn sold big" data-act="sold"'+(b?'':' disabled')+'>Sold</button>'+
+      '<button class="btn bad big" data-act="unsold"'+(c&&!b?'':' disabled')+'>Unsold</button>'+
+      '<button class="btn small" data-act="pause"'+(b?'':' disabled')+'>'+(c&&c.paused?'Resume timer':'Pause timer')+'</button>'+
+      '<button class="btn small" data-act="undobid"'+(b?'':' disabled')+'>Undo bid</button>'+
+      '<button class="btn small" data-act="undosale"'+(S.sold.length&&!c?'':' disabled')+'>Undo sale</button>';
+    return;
+  }
+  const me=myTeam();
+  if(!me){ el.innerHTML='<button class="bidbtn" style="--tc:var(--gold)" data-act="login">Log in to bid<small>You are watching. Tap to log in with your team passcode.</small></button>'; return }
+  const t=S.teams[me], l=leader(), tm=T(me);
+  let main='Wait', sub='', dis=true;
+  if(!HOST_ONLINE){ main='Host is offline'; sub='Bidding opens when the host starts' }
+  else if(S.cur){ const n=nextAmt(), why=bidReason(me,n,P(S.cur.pid));
+    if(l&&l.t===me){ main='You lead '+fmtS(l.amt); sub='Wait for others' }
+    else if(S.cur.paused){ main='Paused'; }
+    else if(why){ main=why; sub='Next '+fmt(n) } else { main='Bid '+fmt(n); dis=false } }
+  else { main='Waiting for next player' }
+  el.innerHTML='<button class="bidbtn" style="--tc:'+tm.col+'" data-act="pbid"'+(dis?' disabled':'')+'>'+esc(main)+'<small class="num">'+me+' · purse '+fmt(t.purse)+' · squad '+t.squad.length+'/25 · max bid '+fmt(Math.max(0,maxBid(me)))+(sub?' · '+esc(sub):'')+'</small></button>';
+}
 
-  <!-- LEADERBOARD MODAL -->
-  <div id="leaderboardModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
-    <div class="glass-card max-w-2xl w-full rounded-2xl p-4 sm:p-5 border border-amber-500/40 max-h-[88vh] flex flex-col">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-        <div>
-          <h3 class="text-base sm:text-lg font-black text-amber-300 font-cinzel">🏆 ALL 10 FRANCHISES PURSE & SQUADS</h3>
-          <p class="text-xs text-slate-400">Purse Limit: ₹120.00 Cr • Squad Size: 18–25</p>
-        </div>
-        <button onclick="toggleLeaderboardModal(false)" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
-      </div>
+/* ---------- drawer ---------- */
+function tabsList(){ const a=[['teams','Teams'],['sold','Sold ('+S.sold.length+')'],['unsold','Unsold ('+S.unsold.length+')'],['squads','Squads'],['pool','Players']]; a.push(['owners','Owners']); a.push(['set','Settings']); return a }
+function openDrawer(t){ if(t) tab=t; drawerOpen=true; $('#drawer').hidden=false; $('#scrim').hidden=false; renderDrawer(true) }
+function closeDrawer(){ drawerOpen=false; $('#drawer').hidden=true; $('#scrim').hidden=true }
+const roleChips = c => ROLES.map(r=>'<span class="rc">'+RS[r]+'<b class="num">'+roleCount(c,r)+'</b></span>').join('');
+function renderDrawer(force){
+  $('#tabs').innerHTML=tabsList().map(([k,n])=>'<button class="tab" role="tab" aria-selected="'+(tab===k)+'" data-tab="'+k+'">'+n+'</button>').join('');
+  if(tab==='pool'&&!force&&$('#poolQ')) return;
+  const el=$('#dbody');
+  if(tab==='teams'){
+    el.innerHTML='<div class="tcards">'+TEAMS.map(t=>{ const n=S.teams[t.c].squad.length, lock=lockReason(t.c);
+      const pill=lock?'<span class="pill red">'+(n>=MAXSQ?'Full':'Locked')+'</span>':n<MINSQ?'<span class="pill amb">Need '+(MINSQ-n)+'</span>':'<span class="pill grn">Valid</span>';
+      return '<button class="tc" style="--tc:'+t.col+'" data-team="'+t.c+'"><div class="h">'+badge(t.c)+'<strong>'+t.c+'</strong><span class="own">'+t.o+'</span>'+pill+'</div>'+
+      '<div class="purse num">'+fmt(S.teams[t.c].purse)+'<small>purse left</small></div>'+
+      '<div class="meter"><i style="width:'+n/MAXSQ*100+'%"></i><b></b></div>'+
+      '<div class="rrow num"><span class="rc">Squad<b>'+n+'/25</b></span><span class="rc">Overseas<b>'+osCount(t.c)+'/8</b></span><span class="rc">Max bid<b>'+fmt(Math.max(0,maxBid(t.c)))+'</b></span></div><div class="rrow">'+roleChips(t.c)+'</div></button>' }).join('')+'</div>';
+  } else if(tab==='sold'){
+    el.innerHTML=S.sold.length?'<div class="scroll"><table class="tbl num"><tr><th>#</th><th>Player</th><th>Team</th><th>Price</th><th>Base</th></tr>'+S.sold.slice().reverse().map((s,i)=>{const p=P(s.pid);return '<tr><td>'+(S.sold.length-i)+'</td><td>'+esc(p.name)+' <span class="hint">'+RS[p.role]+'</span></td><td><b style="color:'+T(s.team).col+'">'+s.team+'</b></td><td>'+fmt(s.price)+'</td><td>'+fmt(p.base)+'</td></tr>'}).join('')+'</table></div>':'<p class="hint">No players have been sold yet.</p>';
+  } else if(tab==='unsold'){
+    el.innerHTML=(IS_HOST&&S.phase==='main_end'&&S.unsold.length?'<p><button class="btn pri" data-act="accel">Accelerated Auction ('+S.unsold.length+')</button></p>':'')+(S.unsold.length?'<div class="scroll"><table class="tbl num"><tr><th>Player</th><th>Nation</th><th>Role</th><th>Base</th></tr>'+S.unsold.map(id=>{const p=P(id);return '<tr><td>'+esc(p.name)+'</td><td>'+NC[p.nation]+'</td><td>'+RS[p.role]+'</td><td>'+fmt(p.base)+'</td></tr>'}).join('')+'</table></div>':'<p class="hint">There are no unsold players.</p>');
+  } else if(tab==='squads'){
+    const sq=S.teams[selTeam].squad.slice().sort((a,b)=>b.price-a.price), spent=PURSE-S.teams[selTeam].purse;
+    el.innerHTML='<div class="row">'+TEAMS.map(t=>'<button class="chip" aria-pressed="'+(t.c===selTeam)+'" data-sel="'+t.c+'">'+t.c+'</button>').join('')+'</div>'+
+      '<p class="num"><b>'+selTeam+'</b> ('+T(selTeam).o+') · '+sq.length+' players · spent '+fmt(spent)+' · left '+fmt(S.teams[selTeam].purse)+'</p>'+
+      ROLES.map(r=>{const rows=sq.filter(x=>P(x.pid).role===r); return rows.length?'<div class="sqgrp"><h4>'+RL[r]+' ('+rows.length+')</h4><table class="tbl num">'+rows.map(x=>{const p=P(x.pid);return '<tr><td>'+esc(p.name)+'</td><td>'+NC[p.nation]+'</td><td style="text-align:right">'+fmt(x.price)+'</td></tr>'}).join('')+'</table></div>':''}).join('')+(sq.length?'':'<p class="hint">This team has not bought anyone yet.</p>')+
+      '<div class="sec">Export</div><div class="row"><button class="btn" data-act="csv">Download CSV</button><button class="btn" data-act="json">Download JSON</button></div>';
+  } else if(tab==='pool'){
+    const sets='<option value="">All sets</option>'+SETORDER.map(k=>'<option value="'+k+'"'+(poolSet===k?' selected':'')+'>'+(k[0]==='M'?'Marquee '+k.slice(1):'Set '+k.slice(1))+'</option>').join('');
+    el.innerHTML='<div class="row"><input type="search" id="poolQ" placeholder="Search player" value="'+esc(poolQ)+'"><select id="poolSet">'+sets+'</select><select id="poolSt"><option value="">All status</option><option value="avail"'+(poolSt==='avail'?' selected':'')+'>Available</option><option value="sold"'+(poolSt==='sold'?' selected':'')+'>Sold</option><option value="unsold"'+(poolSt==='unsold'?' selected':'')+'>Unsold</option></select></div><div class="scroll" id="poolList"></div>'; renderPool();
+  } else if(tab==='owners'){
+    el.innerHTML='<p class="hint">Each owner logs in with the team passcode. A green status means that owner is connected right now.</p><table class="tbl"><tr><th>Team</th><th>Owner</th><th>Status</th></tr>'+TEAMS.map(t=>'<tr><td><b style="color:'+t.col+'">'+t.c+'</b></td><td>'+t.o+'</td><td>'+(PRES[t.c]>0?'<span class="pill grn">Online</span>':'<span class="pill amb">Offline</span>')+'</td></tr>').join('')+'</table>';
+  } else {
+    const s=S.settings;
+    el.innerHTML='<div class="sec">On this device</div><div class="row"><button class="chip" aria-pressed="'+DEV.voice+'" data-dev="voice">Mam voice</button><button class="chip" aria-pressed="'+DEV.sfx+'" data-dev="sfx">Sound FX</button><button class="chip" data-act="full">Full screen</button>'+'<button class="chip" data-act="login">'+(ME||IS_HOST?'Switch login':'Log in')+'</button>'+'</div>'+
+      (IS_HOST?'<div class="sec">Auction rules</div><div class="row"><button class="chip" aria-pressed="'+s.os+'" data-set="os">Overseas max 8</button><button class="chip" aria-pressed="'+s.auto+'" data-set="auto">Auto SOLD on timer</button><select id="secsSel" aria-label="Bid timer">'+[10,15,20,30].map(x=>'<option value="'+x+'"'+(s.secs===x?' selected':'')+'>'+x+' sec timer</option>').join('')+'</select></div>'+
+      '<div class="sec">AI teams</div><p class="hint">AI only bids for teams whose owner is not logged in.</p><div class="row">'+TEAMS.map(t=>'<button class="chip" aria-pressed="'+!!s.ai[t.c]+'" data-ai="'+t.c+'">'+t.c+'</button>').join('')+'</div>'+
+      '<div class="sec">Shortcuts</div><p class="hint">Keys 1–9 and 0 bid for teams in order. N next player, S sold, U unsold, Z undo bid, Space pause.</p>'+
+      '<div class="sec">Danger zone</div><button class="btn bad" data-act="reset">Reset auction</button>':'<p class="hint">Auction rules are set by the host.</p>');
+  }
+}
+function renderPool(){
+  const soldMap={}; S.sold.forEach(s=>soldMap[s.pid]=s);
+  const rows=PLAYERS.filter(p=>(!poolQ||p.name.toLowerCase().includes(poolQ.toLowerCase()))&&(!poolSet||p.set===poolSet)).map(p=>{ const s=soldMap[p.id]; return {p,s,st:s?'sold':S.unsold.includes(p.id)?'unsold':'avail'} }).filter(r=>!poolSt||r.st===poolSt);
+  $('#poolList').innerHTML='<table class="tbl num"><tr><th>#</th><th>Player</th><th>Nat</th><th>Role</th><th>Base</th><th>Status</th></tr>'+rows.map(({p,s,st})=>'<tr><td>'+p.id+'</td><td>'+esc(p.name)+'</td><td>'+NC[p.nation]+'</td><td>'+RS[p.role]+'</td><td>'+fmt(p.base)+'</td><td>'+(s?'<b style="color:'+T(s.team).col+'">'+s.team+'</b> '+fmtS(s.price):st==='unsold'?'Unsold':'Open')+'</td></tr>').join('')+'</table>';
+}
+function exportRows(){ const r=[]; TEAMS.forEach(t=>S.teams[t.c].squad.forEach(x=>{const p=P(x.pid); r.push({team:t.c,owner:t.o,player:p.name,nation:p.nation,role:RL[p.role],price_lakh:x.price,price_cr:x.price/100,base_lakh:p.base,set:p.setName})})); return r }
+function csv(){ const r=exportRows(); const h=['team','owner','player','nation','role','price_lakh','price_cr','base_lakh','set']; return [h.join(',')].concat(r.map(o=>h.map(k=>'"'+String(o[k]).replace(/"/g,'""')+'"').join(','))).join('\n') }
+function download(name,text,type){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove() },500);
+}
 
-      <div class="overflow-y-auto flex-1 space-y-2 pr-1" id="leaderboardListContainer"></div>
+/* ---------- splash / login ---------- */
+function renderSplash(mode){
+  const c=$('#splashCard'), sp=$('#splash'); sp.hidden=false;
+  if(mode==='host'){
+    const had=S.sold.length||S.cur||S.setIdx>0;
+    c.innerHTML='<h2>GC<b>SPL</b> Auction</h2><p>'+(had?'A saved auction was found: '+S.sold.length+' players sold. Resume it, or start a new one.':'10 teams, ₹120 Cr purse each, 18 to 25 players per squad. Owners cannot bid until you press the button below.')+'</p>'+
+      '<div class="row"><button class="btn pri" data-act="start">'+(had?'Resume Auction':'Start Auction')+'</button>'+(had?'<button class="btn" data-act="reset">New auction</button>':'')+'</div><p class="hint">Click once so the browser allows Mam\'s voice and the sound effects.</p>';
+    return;
+  }
+  c.innerHTML='<h2>GC<b>SPL</b> Auction</h2><p>Log in as a team owner to bid, or as the host to run the auction.</p>'+
+    '<select id="loginRole" aria-label="Role"><option value="host">Auction Host</option>'+TEAMS.map(t=>'<option value="'+t.c+'"'+(ME===t.c?' selected':'')+'>'+t.c+' · '+t.o+'</option>').join('')+'</select>'+
+    '<input type="password" id="loginPass" placeholder="Passcode" autocomplete="off" style="background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit">'+
+    '<p id="loginErr" style="color:var(--bad);min-height:1.2em"></p>'+
+    '<div class="row"><button class="btn pri" data-act="dologin">Log in</button><button class="btn" data-act="watch">Watch only</button></div>';
+  setTimeout(()=>{ const i=$('#loginPass'); if(i) i.focus() },50);
+}
+function adoptHost(st){
+  const d=st&&st.main;
+  if(d&&d.v===2){
+    S=Object.assign(fresh(),{phase:d.phase,setIdx:d.setIdx,queues:d.queues,accel:d.accel,sold:d.sold,unsold:d.unsold,teams:d.teams,settings:d.settings});
+    const l=st.live&&st.live.cur; if(l) S.cur={pid:l.pid,bids:l.bids||[],paused:true,remain:l.paused?(l.remain||0):Math.max(0,st.live.deadline-st.live.t)};
+    else S.cur=null;
+  } else { const loc=loadLocal(); S = loc || fresh(); if(S.cur) S.cur.paused=S.cur.bids.length>0 }
+  dl=0; LIVE_SAY=null; LIVE_SALE=null;
+}
+function doLogin(){
+  const role=$('#loginRole').value, pass=$('#loginPass').value.trim(), err=$('#loginErr');
+  if(!pass){ err.textContent='Enter the passcode.'; return }
+  if(!socket||!socket.connected){ err.textContent='Not connected to the server yet. Try again in a moment.'; return }
+  ac();
+  socket.emit('login',{role,pass},r=>{
+    if(!r||!r.ok){ err.textContent=(r&&r.error)||'Login failed.'; return }
+    CRED={role,pass};
+    if(r.role==='host'){ IS_HOST=true; ME=null; hostReady=false; adoptHost(r.state); renderAll(); renderSplash('host') }
+    else { IS_HOST=false; ME=r.team; $('#splash').hidden=true; renderAll(); localSay('Welcome '+T(ME).o+'! Get ready to bid.') }
+  });
+}
 
-      <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between gap-2">
-        <button onclick="downloadSquadPDF()" class="py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/40">
-          📄 Download Squads PDF
-        </button>
-        <button onclick="toggleLeaderboardModal(false)" class="py-2 px-5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const g=s=>e.target.closest(s); let x;
+  if(x=g('[data-pad]')){ if(IS_HOST) placeBid(x.dataset.pad); else { selTeam=x.dataset.pad; openDrawer('squads') } }
+  else if(x=g('[data-tab]')){ tab=x.dataset.tab; renderDrawer(true) }
+  else if(x=g('[data-team]')){ selTeam=x.dataset.team; tab='squads'; renderDrawer(true) }
+  else if(x=g('[data-sel]')){ selTeam=x.dataset.sel; renderDrawer(true) }
+  else if(x=g('[data-dev]')){ const k=x.dataset.dev; DEV[k]=!DEV[k]; if(k==='voice'&&!DEV.voice) try{speechSynthesis.cancel()}catch(_){} saveDev(); renderDrawer(true) }
+  else if(x=g('[data-set]')){ if(!IS_HOST) return; const k=x.dataset.set; S.settings[k]=!S.settings[k]; commit(1,0); renderDrawer(true) }
+  else if(x=g('[data-ai]')){ if(!IS_HOST) return; const k=x.dataset.ai; S.settings.ai[k]=!S.settings.ai[k]; computeAI(); commit(1,0); renderDrawer(true); renderPaddles() }
+  else if(x=g('[data-act]')){ act(x.dataset.act) }
+  else if(g('#bMenu')) openDrawer(); else if(g('#bClose')||e.target.id==='scrim') closeDrawer();
+});
+function act(a){
+  if(a==='next') nextPlayer(); else if(a==='sold') sell(); else if(a==='unsold') markUnsold(); else if(a==='pause') togglePause();
+  else if(a==='undobid') undoBid(); else if(a==='undosale') undoSale(); else if(a==='accel') startAccel(); else if(a==='pbid') playerBid();
+  else if(a==='csv') download('gcspl-squads.csv',csv(),'text/csv'); else if(a==='json') download('gcspl-squads.json',JSON.stringify(exportRows(),null,2),'application/json');
+  else if(a==='reset') resetFlow();
+  else if(a==='full'){ try{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>toast('Full screen was blocked')) }catch(_){} }
+  else if(a==='login'){ renderSplash() }
+  else if(a==='dologin') doLogin();
+  else if(a==='watch'){ ac(); $('#splash').hidden=true }
+  else if(a==='start'){ ac(); $('#splash').hidden=true; if(S.cur&&S.cur.bids.length){ S.cur.paused=true } computeAI(); hostReady=true; commit(1,1); socket.emit('host:ready'); renderAll(); say(S.sold.length||S.cur?'Welcome back. We resume where we left off.':'Good evening everyone! Welcome to the Grand Cricket Simulation Premier League auction. Ten teams, one hundred twenty crore each. Let us begin!') }
+}
+document.addEventListener('change',e=>{ const i=e.target.id;
+  if(i==='secsSel'&&IS_HOST){ S.settings.secs=+e.target.value; if(S.cur&&S.cur.bids.length&&!S.cur.paused) dl=Date.now()+S.settings.secs*1000; commit(1,1) }
+  else if(i==='poolSet'){poolSet=e.target.value;renderPool()} else if(i==='poolSt'){poolSt=e.target.value;renderPool()} });
+document.addEventListener('input',e=>{ if(e.target.id==='poolQ'){ poolQ=e.target.value; renderPool() } });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='loginPass'){ doLogin(); return }
+  if(e.key==='Escape'&&drawerOpen){ closeDrawer(); return }
+  if(!IS_HOST||!$('#splash').hidden||!$('#modal').hidden||drawerOpen||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.ctrlKey||e.metaKey) return;
+  const k=e.key.toLowerCase();
+  if(/^[0-9]$/.test(k)) placeBid(TEAMS[k==='0'?9:+k-1].c);
+  else if(k==='n') nextPlayer(); else if(k==='s') sell(); else if(k==='u') markUnsold(); else if(k==='z') undoBid(); else if(k===' '){ e.preventDefault(); togglePause() }
+});
+function resetFlow(){
+  const m=$('#modal'); $('#modalCard').innerHTML='<h2>Reset auction?</h2><p>All sold players, purses and squads will be deleted. This cannot be undone. Download the squads from the Squads tab first.</p><div class="row"><button class="btn bad" id="mYes">Yes, reset</button><button class="btn" id="mNo">Cancel</button></div>'; m.hidden=false;
+  $('#mNo').onclick=()=>m.hidden=true;
+  $('#mYes').onclick=()=>{ const keep=S.settings; S=fresh(); S.settings=keep; dl=0; LIVE_SALE=null; LIVE_SAY=null; hostReady=true; commit(1,1); socket.emit('host:ready'); m.hidden=true; $('#splash').hidden=true; renderAll(); say('Auction reset. Press Next Player to begin.') };
+}
 
-  <!-- HAMBURGER MENU DRAWER -->
-  <div id="menuDrawer" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex justify-end">
-    <div class="w-full max-w-xs bg-slate-900 border-l border-amber-500/40 h-full p-4 flex flex-col justify-between">
-      <div class="space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <span class="font-black text-amber-300 font-cinzel text-base">AUCTION MENU</span>
-          <button onclick="toggleMenuDrawer(false)" class="text-slate-400 text-lg">✕</button>
-        </div>
-        <div class="flex flex-col gap-2">
-          <button onclick="openLoginModal(); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-amber-500/20 text-sm font-bold text-amber-300 border border-amber-500/30">
-            🔑 Login Team / Host
-          </button>
-          <button onclick="toggleLeaderboardModal(true); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-slate-200">
-            📊 10 Teams Purse & Squads
-          </button>
-          <button onclick="toggleLanguage(); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-slate-200">
-            🗣️ Switch Hindi / English Voice
-          </button>
-          <button onclick="downloadSquadPDF(); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-emerald-400">
-            📄 Download Printable PDF Report
-          </button>
-        </div>
-      </div>
-      <div class="text-[11px] text-slate-500 text-center">GCSPL 2026 Official System</div>
-    </div>
-  </div>
-
-  <!-- LOGIN MODAL -->
-  <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
-    <div class="glass-card max-w-sm w-full rounded-2xl p-5 border border-amber-500/40">
-      <h3 class="text-base font-black text-amber-300 font-cinzel mb-1">TEAM & HOST LOGIN</h3>
-      <p class="text-xs text-slate-400 mb-4">Please select your team and enter your password.</p>
-      <div class="space-y-3">
-        <div>
-          <label class="text-[11px] font-bold text-slate-300">Select Franchise or Host</label>
-          <select id="loginSelectRole" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
-            <option value="CSK">Chennai Super Kings (CSK) — Pass: csk123</option>
-            <option value="MI">Mumbai Indians (MI) — Pass: mi123</option>
-            <option value="RCB">Royal Challengers Bengaluru (RCB) — Pass: rcb123</option>
-            <option value="KKR">Kolkata Knight Riders (KKR) — Pass: kkr123</option>
-            <option value="DC">Delhi Capitals (DC) — Pass: dc123</option>
-            <option value="GT">Gujarat Titans (GT) — Pass: gt123</option>
-            <option value="LSG">Lucknow Super Giants (LSG) — Pass: lsg123</option>
-            <option value="RR">Rajasthan Royals (RR) — Pass: rr123</option>
-            <option value="SRH">Sunrisers Hyderabad (SRH) — Pass: srh123</option>
-            <option value="PBKS">Punjab Kings (PBKS) — Pass: pbks123</option>
-            <option value="admin">🎙️ Auction Host (Admin) — Pass: gcspl2026</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-300">Password</label>
-          <input type="password" id="loginPasswordInput" placeholder="Enter password..." class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
-        </div>
-        <button onclick="handleLoginSubmit()" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider mt-2">
-          Verify & Enter Auction
-        </button>
-        <button onclick="closeLoginModal()" class="w-full py-1.5 text-xs text-slate-400 hover:text-white">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const PASSWORDS = {
-      admin: 'gcspl2026',
-      CSK: 'csk123', MI: 'mi123', RCB: 'rcb123', KKR: 'kkr123', DC: 'dc123',
-      GT: 'gt123', LSG: 'lsg123', RR: 'rr123', SRH: 'srh123', PBKS: 'pbks123'
-    };
-
-    const INITIAL_TEAMS = {
-      CSK: { name: 'Chennai Super Kings', short: 'CSK', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      MI: { name: 'Mumbai Indians', short: 'MI', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      RCB: { name: 'Royal Challengers Bengaluru', short: 'RCB', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      KKR: { name: 'Kolkata Knight Riders', short: 'KKR', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      DC: { name: 'Delhi Capitals', short: 'DC', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      GT: { name: 'Gujarat Titans', short: 'GT', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      LSG: { name: 'Lucknow Super Giants', short: 'LSG', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      RR: { name: 'Rajasthan Royals', short: 'RR', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      SRH: { name: 'Sunrisers Hyderabad', short: 'SRH', purse: 120.00, spent: 0, players: [], overseas: 0 },
-      PBKS: { name: 'Punjab Kings', short: 'PBKS', purse: 120.00, spent: 0, players: [], overseas: 0 }
-    };
-
-    const PLAYER_POOL = [
-      { id: 1, name: 'Virat Kohli', role: 'Top-Order Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Virat_Kohli_during_the_India_vs_Aus_4th_Test_match_at_Narendra_Modi_Stadium_on_09_March_2023.jpg' },
-      { id: 2, name: 'Rohit Sharma', role: 'Opening Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Prime_Minister_Of_Bharat_Shri_Narendra_Damodardas_Modi_with_Shri_Rohit_Gurunath_Sharma_%28Cropped%29.jpg' },
-      { id: 3, name: 'Jasprit Bumrah', role: 'Fast Bowler', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Jasprit_Bumrah_in_PMO_New_Delhi.jpg' },
-      { id: 4, name: 'Rishabh Pant', role: 'WK-Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/b/b7/Rishabh_Pant_in_PMO_New_Delhi.jpg' },
-      { id: 5, name: 'Hardik Pandya', role: 'All-Rounder', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/7/79/Hardik_Pandya_in_PMO_New_Delhi.jpg' },
-      { id: 6, name: 'Suryakumar Yadav', role: 'Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/b/b7/Suryakumar_Yadav_in_PMO_New_Delhi.jpg' },
-      { id: 7, name: 'Ravindra Jadeja', role: 'All-Rounder', country: 'India', overseas: false, base: 2.00, photo: 'https://upload.wikimedia.org/wikipedia/commons/2/2c/PM_Shri_Narendra_Modi_with_Ravindra_Jadeja_%28Cropped%29.jpg' },
-      { id: 8, name: 'KL Rahul', role: 'WK-Batter', country: 'India', overseas: false, base: 2.00, photo: '' },
-      { id: 9, name: 'Shreyas Iyer', role: 'Top-Order Batter', country: 'India', overseas: false, base: 2.00, photo: '' },
-      { id: 10, name: 'Mohammed Shami', role: 'Fast Bowler', country: 'India', overseas: false, base: 2.00, photo: '' },
-      { id: 11, name: 'Mitchell Starc', role: 'Fast Bowler', country: 'Australia', overseas: true, base: 2.00, photo: '' },
-      { id: 12, name: 'Pat Cummins', role: 'All-Rounder', country: 'Australia', overseas: true, base: 2.00, photo: '' },
-      { id: 13, name: 'Travis Head', role: 'Opening Batter', country: 'Australia', overseas: true, base: 2.00, photo: '' },
-      { id: 14, name: 'Jos Buttler', role: 'WK-Batter', country: 'England', overseas: true, base: 2.00, photo: '' },
-      { id: 15, name: 'Heinrich Klaasen', role: 'WK-Batter', country: 'South Africa', overseas: true, base: 2.00, photo: '' },
-      { id: 16, name: 'Rashid Khan', role: 'Spin All-Rounder', country: 'Afghanistan', overseas: true, base: 2.00, photo: '' },
-      { id: 17, name: 'Nicholas Pooran', role: 'WK-Batter', country: 'West Indies', overseas: true, base: 2.00, photo: '' },
-      { id: 18, name: 'Trent Boult', role: 'Fast Bowler', country: 'New Zealand', overseas: true, base: 2.00, photo: '' },
-      { id: 19, name: 'Shubman Gill', role: 'Opening Batter', country: 'India', overseas: false, base: 2.00, photo: '' },
-      { id: 20, name: 'Yashasvi Jaiswal', role: 'Opening Batter', country: 'India', overseas: false, base: 2.00, photo: '' }
-    ];
-
-    let state = {
-      auctionStarted: false,
-      isPaused: false,
-      currentLotId: null,
-      currentBid: 2.00,
-      highestBidder: null,
-      timer: 30,
-      maxTimer: 30,
-      teams: JSON.parse(JSON.stringify(INITIAL_TEAMS)),
-      processedPlayers: []
-    };
-
-    let currentUser = { role: 'guest', teamId: null, name: 'Select Team / Login' };
-    let voiceLanguage = 'hi';
-    let soundEnabled = true;
-    let hostTimerLoop = null;
-    let socket = null;
-
-    try {
-      socket = io();
-      socket.on('syncStateFromServer', (serverState) => {
-        if (!serverState) return;
-        state = serverState;
-        renderFullUI();
+/* ---------- boot ---------- */
+function boot(){
+  renderAll(); renderSplash();
+  socket=io({reconnectionDelayMax:4000});
+  socket.on('connect',()=>{
+    netState='live'; renderHeader();
+    if(CRED){   // reconnect: log in again silently
+      socket.emit('login',CRED,r=>{
+        if(!r||!r.ok){ CRED=null; ME=null; IS_HOST=false; renderAll(); return }
+        if(r.role==='host'){ IS_HOST=true; if(hostReady){ push('main'); push('live'); socket.emit('host:ready') } }
+        else { IS_HOST=false; ME=r.team }
+        renderAll();
       });
-      socket.on('bidReceived', (bidData) => {
-        if (currentUser.role === 'admin') {
-          processBidOnHost(bidData.teamId, bidData.amount);
-        }
-      });
-      socket.on('playSpeechOnClients', (speechObj) => {
-        setCommentary(speechObj.text);
-        speakText(speechObj.text);
-      });
-    } catch (e) {}
-
-    function broadcastState() {
-      if (socket) socket.emit('pushStateToServer', state);
-      renderFullUI();
     }
+  });
+  socket.on('disconnect',()=>{ netState='error'; renderHeader() });
+  socket.on('state:init',d=>{
+    PRES=d.presence||{}; HOST_ONLINE=!!d.hostOnline;
+    if(!IS_HOST){ if(d.main) applyMain(d.main); if(d.live) applyLive(d.live) }
+    renderAll();
+  });
+  socket.on('state:main',d=>{ if(!IS_HOST) applyMain(d) });
+  socket.on('state:live',d=>{ if(!IS_HOST) applyLive(d) });
+  socket.on('presence',p=>{ PRES=p; renderHeader(); renderPaddles(); if(drawerOpen&&tab==='owners') renderDrawer(true) });
+  socket.on('hostStatus',v=>{ HOST_ONLINE=!!v; renderAll() });
+  socket.on('bid',m=>{ if(IS_HOST) handleReq(m.team,m) });
+  socket.on('kicked',()=>{ IS_HOST=false; CRED=null; hostReady=false; renderAll(); toast('Someone else logged in as the host.'); renderSplash() });
+}
+window.addEventListener('beforeunload',saveLocal);
+boot();
+</script>
 
-    function broadcastSpeech(hiText, enText) {
-      const chosen = (voiceLanguage === 'hi') ? hiText : enText;
-      setCommentary(chosen);
-      speakText(chosen);
-      if (socket && currentUser.role === 'admin') {
-        socket.emit('broadcastSpeech', { text: chosen });
-      }
-    }
-
-    function speakText(text) {
-      if (!soundEnabled || !('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-
-      let femaleVoice = voices.find(v =>
-        (voiceLanguage === 'hi' ? v.lang.includes('hi') : v.lang.includes('en')) &&
-        !v.name.toLowerCase().includes('hemant') &&
-        !v.name.toLowerCase().includes('david') &&
-        !v.name.toLowerCase().includes('ravi') &&
-        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('kalpana') || v.name.toLowerCase().includes('swara') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha'))
-      );
-
-      if (femaleVoice) utterance.voice = femaleVoice;
-      utterance.rate = 1.0;
-      utterance.pitch = 1.25;
-      window.speechSynthesis.speak(utterance);
-    }
-
-    function setCommentary(msg) {
-      document.getElementById('liveCommentarySpeech').innerText = `"${msg}"`;
-    }
-
-    function formatCroreVoiceHindi(val) {
-      const cr = Math.floor(val);
-      const lkh = Math.round((val - cr) * 100);
-      if (lkh === 0) return `${cr} करोड़ रुपये`;
-      return `${cr} करोड़ ${lkh} लाख रुपये`;
-    }
-
-    function startAuctionByHost() {
-      if (currentUser.role !== 'admin') {
-        alert("Only the Host (Admin) can start the auction!");
-        return;
-      }
-      if (state.auctionStarted) return;
-      state.auctionStarted = true;
-      state.isPaused = false;
-      broadcastSpeech(
-        `नमस्कार देवियों और सज्जनों! इंदौर प्रीमियर लीग मेगा ऑक्शन में आपका स्वागत है!`,
-        `Welcome ladies and gentlemen to the Mega Auction! Let the proceedings begin.`
-      );
-      setTimeout(() => { drawRandomPlayer(); }, 3500);
-    }
-
-    function drawRandomPlayer() {
-      clearInterval(hostTimerLoop);
-      if (currentUser.role !== 'admin') return;
-
-      const availablePlayers = PLAYER_POOL.filter(p => !state.processedPlayers.includes(p.id));
-      
-      if (availablePlayers.length === 0) {
-        broadcastSpeech("ऑक्शन समाप्त हो चुका है! सभी टीमों को बधाई!", "The Mega Auction is now complete! Congratulations to all franchises!");
-        return;
-      }
-
-      const randomIndex = Math.floor(Math.random() * availablePlayers.length);
-      const p = availablePlayers[randomIndex];
-
-      state.currentLotId = p.id;
-      state.currentBid = p.base;
-      state.highestBidder = null;
-      state.timer = 30; 
-      state.maxTimer = 30;
-      broadcastState();
-
-      broadcastSpeech(
-        `अगले खिलाड़ी हैं ${p.name}, बेस प्राइस ${formatCroreVoiceHindi(p.base)}। पहली बोली किसकी होगी?`,
-        `Next player up is ${p.name}, base price ${p.base.toFixed(2)} crore rupees.`
-      );
-
-      startHostMasterTimer();
-    }
-
-    function startHostMasterTimer() {
-      clearInterval(hostTimerLoop);
-      if (currentUser.role !== 'admin') return;
-
-      hostTimerLoop = setInterval(() => {
-        if (state.isPaused || !state.auctionStarted) return;
-
-        state.timer--;
-        broadcastState();
-
-        if (state.timer === 10 && state.highestBidder) {
-          const tName = state.teams[state.highestBidder].name;
-          broadcastSpeech(
-            `${formatCroreVoiceHindi(state.currentBid)}, ${tName} के पास... पहली बार!`,
-            `${state.currentBid.toFixed(2)} crore to ${tName}... Going once!`
-          );
-        } else if (state.timer === 5 && state.highestBidder) {
-          broadcastSpeech(
-            `दूसरी और अंतिम चेतावनी... क्या कोई और बोली है?`,
-            `Going twice... Last and final call!`
-          );
-        } else if (state.timer <= 0) {
-          clearInterval(hostTimerLoop);
-          state.isPaused = true;
-          broadcastState();
-          broadcastSpeech("समय समाप्त! होस्ट का निर्णय अंतिम होगा।", "Time is up! Awaiting Host's final decision.");
-        }
-      }, 1000);
-    }
-
-    function getIncrement(amt) {
-      if (amt < 1.00) return 0.10;
-      if (amt < 5.00) return 0.20;
-      return 0.50;
-    }
-
-    function submitBid() {
-      if (!state.auctionStarted) {
-        alert("The Host has not started the auction yet. Please wait!");
-        return;
-      }
-      if (state.isPaused) {
-        alert("The auction is currently paused. Please wait for the Host to resume.");
-        return;
-      }
-      if (!currentUser.teamId) {
-        alert("Please login and select your team first to raise the paddle!");
-        openLoginModal();
-        return;
-      }
-
-      const myTeamId = currentUser.teamId;
-      if (state.highestBidder === myTeamId) {
-        alert("Your team already holds the highest bid!");
-        return;
-      }
-
-      const nextAmt = state.highestBidder ? +(state.currentBid + getIncrement(state.currentBid)).toFixed(2) : state.currentBid;
-      const myTeam = state.teams[myTeamId];
-      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId);
-
-      if (myTeam.purse < nextAmt) {
-        alert(`Insufficient purse balance! You only have ₹${myTeam.purse.toFixed(2)} Cr remaining.`);
-        return;
-      }
-      if (p.overseas && myTeam.overseas >= 8) {
-        alert("You have reached the maximum limit of 8 overseas players!");
-        return;
-      }
-
-      if ('vibrate' in navigator) navigator.vibrate(50);
-
-      if (currentUser.role === 'admin') {
-        processBidOnHost(myTeamId, nextAmt);
-      } else if (socket) {
-        socket.emit('bidAction', { teamId: myTeamId, amount: nextAmt });
-      }
-    }
-
-    function processBidOnHost(teamId, amount) {
-      state.highestBidder = teamId;
-      state.currentBid = amount;
-      state.timer = 20; 
-      state.maxTimer = 20;
-      if (state.isPaused) state.isPaused = false;
-      broadcastState();
-
-      const tName = state.teams[teamId].name;
-      broadcastSpeech(
-        `${formatCroreVoiceHindi(amount)}, ${tName} की तरफ से!`,
-        `${amount.toFixed(2)} crore to ${tName}!`
-      );
-      startHostMasterTimer();
-    }
-
-    function concludeCurrentLotOnHost(isSold) {
-      clearInterval(hostTimerLoop);
-      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId);
-      state.processedPlayers.push(p.id); 
-
-      if (isSold && state.highestBidder) {
-        const winner = state.teams[state.highestBidder];
-        winner.purse = +(winner.purse - state.currentBid).toFixed(2);
-        winner.spent = +(winner.spent + state.currentBid).toFixed(2);
-        winner.players.push({ name: p.name, role: p.role, price: state.currentBid, overseas: p.overseas });
-        if (p.overseas) winner.overseas++;
-
-        state.isPaused = true;
-        broadcastState();
-        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
-
-        broadcastSpeech(
-          `सोल्ड! ${p.name} को ${winner.name} ने ${formatCroreVoiceHindi(state.currentBid)} में खरीद लिया है!`,
-          `SOLD! ${p.name} goes to ${winner.name} for ${state.currentBid.toFixed(2)} crore rupees!`
-        );
-
-        setTimeout(() => {
-          toggleLeaderboardModal(true);
-        }, 1500);
-
-      } else {
-        state.highestBidder = null;
-        state.isPaused = true;
-        broadcastState();
-        broadcastSpeech(
-          `${p.name} पर कोई बोली नहीं लगी, खिलाड़ी अनसोल्ड रहे!`,
-          `No bids received. ${p.name} remains UNSOLD!`
-        );
-      }
-    }
-
-    function renderFullUI() {
-      const lobby = document.getElementById('waitingLobbyScreen');
-      const stage = document.getElementById('liveBiddingStage');
-      const statusBadge = document.getElementById('auctionStatusBadge');
-
-      if (!state.auctionStarted) {
-        lobby.classList.remove('hidden');
-        stage.classList.add('hidden');
-        statusBadge.innerText = '⏳ Waiting in Lobby';
-        return;
-      } else {
-        lobby.classList.add('hidden');
-        stage.classList.remove('hidden');
-        statusBadge.innerText = state.isPaused ? '⏸️ Auction Paused' : '🟢 Auction Live';
-      }
-
-      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId) || PLAYER_POOL[0];
-      
-      document.getElementById('playerNameText').innerText = p.name;
-      document.getElementById('playerRoleBadge').innerText = p.role;
-      document.getElementById('playerCountryBadge').innerText = (p.overseas ? '✈️ ' : '🇮🇳 ') + p.country;
-      document.getElementById('playerBasePriceBadge').innerText = `Base: ₹${p.base.toFixed(2)} Cr`;
-
-      const img = document.getElementById('playerPhotoImg');
-      const fallback = document.getElementById('jerseyFallback');
-      if (p.photo) {
-        img.src = p.photo;
-        img.classList.remove('hidden');
-        fallback.classList.add('hidden');
-        img.onerror = () => {
-          img.classList.add('hidden');
-          fallback.classList.remove('hidden');
-          document.getElementById('jerseyInitials').innerText = p.name.split(' ').map(w=>w[0]).join('');
-        };
-      } else {
-        img.classList.add('hidden');
-        fallback.classList.remove('hidden');
-        document.getElementById('jerseyInitials').innerText = p.name.split(' ').map(w=>w[0]).join('');
-      }
-
-      document.getElementById('timerText').innerText = state.isPaused ? '⏸️ PAUSED' : `⏱️ ${state.timer}s`;
-      const pct = Math.max(0, Math.min(100, (state.timer / (state.maxTimer || 30)) * 100));
-      document.getElementById('timerProgressBar').style.width = `${pct}%`;
-
-      document.getElementById('highestBidAmountText').innerText = `₹${state.currentBid.toFixed(2)} Cr`;
-      if (state.highestBidder) {
-        const leader = state.teams[state.highestBidder];
-        document.getElementById('highestBidTeamText').innerText = `Leading: ${leader.name} (${leader.short})`;
-      } else {
-        document.getElementById('highestBidTeamText').innerText = `Opening Bid: ₹${p.base.toFixed(2)} Cr`;
-      }
-
-      if (currentUser.teamId && state.teams[currentUser.teamId]) {
-        const myT = state.teams[currentUser.teamId];
-        document.getElementById('myTeamPurseLabel').innerText = `${myT.short} Purse (${myT.players.length}/25)`;
-        document.getElementById('myTeamRemainingPurse').innerText = `₹${myT.purse.toFixed(2)} Cr`;
-        document.getElementById('yourTeamLeadNotice').classList.toggle('hidden', state.highestBidder !== currentUser.teamId);
-      }
-
-      const nextBidVal = state.highestBidder ? +(state.currentBid + getIncrement(state.currentBid)).toFixed(2) : state.currentBid;
-      document.getElementById('bidPaddleBtnText').innerText = `BID ₹${nextBidVal.toFixed(2)} CR`;
-    }
-
-    function togglePauseAuction() {
-      if (currentUser.role !== 'admin') return;
-      state.isPaused = !state.isPaused;
-      document.getElementById('pauseResumeBtn').innerText = state.isPaused ? '▶️ Resume Timer' : '⏸️ Pause Timer';
-      broadcastState();
-      if (!state.isPaused) startHostMasterTimer();
-    }
-    function hammerSoldManual() {
-      if (currentUser.role !== 'admin') return;
-      concludeCurrentLotOnHost(true);
-    }
-    function markUnsoldManual() {
-      if (currentUser.role !== 'admin') return;
-      concludeCurrentLotOnHost(false);
-    }
-
-    function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
-    function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
-
-    function handleLoginSubmit() {
-      const role = document.getElementById('loginSelectRole').value;
-      const pass = document.getElementById('loginPasswordInput').value.trim();
-
-      if (PASSWORDS[role] && pass !== PASSWORDS[role]) {
-        alert("Invalid Password! Please check the password listed in the dropdown.");
-        return;
-      }
-
-      if (role === 'admin') {
-        currentUser = { role: 'admin', teamId: null, name: '🎙️ Host (Admin)' };
-        document.getElementById('hostAdminControls').classList.remove('hidden');
-        document.getElementById('lobbyStartAuctionBtn').classList.remove('hidden');
-      } else {
-        currentUser = { role: 'team', teamId: role, name: `${state.teams[role].short} Owner` };
-        document.getElementById('hostAdminControls').classList.add('hidden');
-        document.getElementById('lobbyStartAuctionBtn').classList.add('hidden');
-      }
-
-      document.getElementById('userNameLabel').innerText = currentUser.name;
-      closeLoginModal();
-      renderFullUI();
-    }
-
-    function toggleAudio() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('soundIcon').innerText = soundEnabled ? '🔊' : '🔇';
-    }
-    function toggleLanguage() {
-      voiceLanguage = (voiceLanguage === 'hi') ? 'en' : 'hi';
-      document.getElementById('langToggleBtn').innerText = (voiceLanguage === 'hi') ? '🇮🇳 Voice: Hindi' : '🇬🇧 Voice: English';
-    }
-    function toggleMenuDrawer(show) {
-      document.getElementById('menuDrawer').classList.toggle('hidden', !show);
-    }
-    function toggleLeaderboardModal(show) {
-      document.getElementById('leaderboardModal').classList.toggle('hidden', !show);
-      if (show) renderLeaderboard();
-    }
-
-    function renderLeaderboard() {
-      const container = document.getElementById('leaderboardListContainer');
-      container.innerHTML = Object.keys(state.teams).map(k => {
-        const t = state.teams[k];
-        const playerNames = t.players.map(pl => `${pl.name} (₹${pl.price}Cr)`).join(', ') || 'No players bought yet';
-        return `
-          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col gap-1">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-sm text-amber-300">${t.name} (${t.short})</span>
-              <span class="font-black text-sm text-emerald-400 font-cinzel">Purse: ₹${t.purse.toFixed(2)} Cr</span>
-            </div>
-            <div class="flex justify-between text-[11px] text-slate-400">
-              <span>Squad: ${t.players.length}/25 (Overseas: ${t.overseas}/8)</span>
-              <span>Spent: ₹${t.spent.toFixed(2)} Cr</span>
-            </div>
-            <div class="text-[11px] text-slate-300 mt-1 bg-slate-900 p-1.5 rounded border border-slate-800">
-              <b>Players:</b> ${playerNames}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function downloadSquadPDF() {
-      toggleLeaderboardModal(true);
-      setTimeout(() => window.print(), 300);
-    }
-
-    window.onload = () => {
-      renderFullUI();
-    };
-  </script>
-</body>
-</html>
+</body></html>
