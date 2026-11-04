@@ -1,13 +1,11 @@
 {
   "name": "gcspl-live-auction",
-  "version": "1.0.0",
-  "description": "GCSPL 2026 Mega Auction Live System",
+  "version": "2.0.0",
+  "description": "GCSPL Mega Auction live system (host + 10 team owners)",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongoose": "^8.3.1",
