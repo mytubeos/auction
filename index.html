@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCSPL Mega Auction 2026 — Grand Cricket Simulation Premier League</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #171b30 0%, #0c0f1d 55%, #05070e 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+    .font-cinzel { font-family: 'Cinzel', serif; }
+    .gold-gradient-text {
+      background: linear-gradient(135deg, #FFF3B0 0%, #CA9E3C 50%, #9B701D 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gold-border { border: 1px solid rgba(202, 158, 60, 0.35); }
+    .glass-card {
+      background: rgba(18, 22, 40, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+    .active-bid-pulse {
+      box-shadow: 0 0 25px rgba(230, 161, 23, 0.45);
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 15px rgba(230, 161, 23, 0.3); }
+      100% { box-shadow: 0 0 35px rgba(230, 161, 23, 0.7); }
+    }
+    @keyframes hammerStrike {
+      0% { transform: rotate(0deg); }
+      30% { transform: rotate(-35deg); }
+      70% { transform: rotate(20deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .animate-hammer { animation: hammerStrike 0.4s ease-in-out; }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .animate-marquee { display: inline-block; animation: marquee 30s linear infinite; }
+  </style>
+</head>
+<body class="p-2 sm:p-4 flex flex-col min-h-screen pb-24">
+
+  <!-- TOP HEADER -->
+  <header class="max-w-7xl mx-auto w-full mb-3">
+    <div class="glass-card rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 gold-border">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 flex items-center justify-center text-2xl shadow-lg shadow-amber-600/30">
+          🏆
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Mega Auction 2026</span>
+            <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
+            </span>
+          </div>
+          <h1 class="text-lg sm:text-2xl font-black font-cinzel gold-gradient-text tracking-wide">GCSPL PREMIER LEAGUE</h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="soundToggleBtn" onclick="toggleAudio()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center gap-1.5">
+          <span id="soundIcon">🔊</span> <span id="soundLabel" class="hidden sm:inline">Voice On</span>
+        </button>
+
+        <div id="currentUserPill" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span id="userNameLabel" class="text-amber-300 font-bold">Host (Admin)</span>
+        </div>
+
+        <button onclick="openLoginModal()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs shadow-md">
+          🔄 Switch
+        </button>
+
+        <button onclick="toggleMenuDrawer(true)" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-amber-500/40 text-amber-300 font-bold text-xs">
+          ☰ Menu
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE TV TICKER -->
+  <div class="bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 border-y border-amber-500/30 text-xs py-1.5 px-3 overflow-hidden whitespace-nowrap shadow-md flex items-center gap-3 mb-3 max-w-7xl mx-auto w-full rounded-lg">
+    <div class="flex items-center gap-1.5 bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase animate-pulse">
+      LIVE
+    </div>
+    <div class="overflow-hidden relative w-full">
+      <div id="liveBroadcastTicker" class="inline-block animate-marquee font-medium text-slate-300 text-[11px] space-x-6">
+        <span class="text-amber-300 font-bold">🏆 GCSPL 2026 AUCTION</span>
+        <span id="tickerTopBuy" class="text-emerald-400">💰 10 Teams Competing • Purse ₹120 Cr Each</span>
+        <span class="text-yellow-400">🎙️ AI Auctioneer: Mallika Ma'am (Auto-Pilot Active)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN AUCTION ARENA -->
+  <main class="max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+    
+    <!-- LEFT PANEL: PLAYER PROFILE & CURRENT BID (7 COLS) -->
+    <div class="lg:col-span-7 flex flex-col gap-4">
+      <div class="glass-card rounded-2xl p-4 sm:p-6 gold-border relative flex flex-col items-center text-center">
+        
+        <!-- Timer Bar -->
+        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-4 border border-slate-700">
+          <div id="timerProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 transition-all duration-300 w-full"></div>
+        </div>
+        <div class="flex justify-between w-full text-xs font-bold text-slate-400 mb-3 px-1">
+          <span id="lotBadge" class="text-amber-400">LOT #1 • MARQUEE SET 1</span>
+          <span id="timerText" class="text-red-400 font-mono text-sm">⏱️ 12s Remaining</span>
+        </div>
+
+        <!-- Player Photo & Details -->
+        <div class="relative w-40 h-40 sm:w-48 sm:h-48 rounded-2xl overflow-hidden border-2 border-amber-400/50 shadow-2xl mb-3 bg-slate-900 flex items-center justify-center">
+          <img id="playerPhotoImg" src="" alt="Player" class="w-full h-full object-cover">
+          <div id="jerseyFallback" class="hidden flex-col items-center justify-center w-full h-full bg-gradient-to-br from-blue-900 to-indigo-950">
+            <span class="text-4xl">🏏</span>
+            <span id="jerseyInitials" class="text-lg font-black text-amber-300 mt-1">VK</span>
+          </div>
+        </div>
+
+        <h2 id="playerNameText" class="text-2xl sm:text-3xl font-black text-white tracking-wide">Virat Kohli</h2>
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+          <span id="playerRoleBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Top-Order Batter</span>
+          <span id="playerCountryBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🇮🇳 India</span>
+          <span id="playerBasePriceBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">Base: ₹2.00 Cr</span>
+        </div>
+
+        <!-- BIG HIGHEST BID SPOTLIGHT -->
+        <div class="w-full mt-5 p-4 rounded-xl bg-slate-950/80 border border-amber-500/40 active-bid-pulse">
+          <div class="text-xs uppercase font-extrabold text-amber-400 tracking-widest mb-1">CURRENT HIGHEST BID</div>
+          <div id="highestBidAmountText" class="text-3xl sm:text-5xl font-black font-cinzel text-emerald-400">₹2.00 Cr</div>
+          <div id="highestBidTeamText" class="text-sm sm:text-base font-bold text-slate-300 mt-1">Opening Lot (Waiting for first paddle)</div>
+          <div id="yourTeamLeadNotice" class="hidden mt-2 text-xs font-bold text-emerald-400 bg-emerald-500/20 py-1 rounded-md">
+            🟢 YOUR TEAM CURRENTLY LEADS THIS BID!
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: COMMENTARY & QUICK CONTROLS (5 COLS) -->
+    <div class="lg:col-span-5 flex flex-col gap-4">
+      
+      <!-- Mallika Ma'am Commentary Box -->
+      <div class="glass-card rounded-2xl p-4 gold-border flex-1 flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">👩‍⚖️</span>
+            <div>
+              <div class="text-xs font-bold text-amber-300">MALLIKA SAGAR (AI HOST)</div>
+              <div class="text-[10px] text-slate-400">100% Automated Indian Female Voice</div>
+            </div>
+          </div>
+          <button onclick="toggleLanguage()" id="langToggleBtn" class="text-[10px] px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold">
+            🇮🇳 Hindi
+          </button>
+        </div>
+
+        <!-- Live Subtitles Speech bubble -->
+        <div class="flex-1 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex flex-col justify-between min-h-[160px]">
+          <p id="liveCommentarySpeech" class="text-sm font-medium text-amber-200 leading-relaxed italic">
+            "नमस्कार देवियों और सज्जनों! इंदौर प्रीमियर लीग के ऑक्शन में आपका स्वागत है। बोली लगाने के लिए तैयार हो जाइए!"
+          </p>
+          <div class="text-[10px] text-slate-500 mt-2 text-right">Auto-Progression Enabled</div>
+        </div>
+
+        <!-- Host Admin Fast-Actions (Visible only to Admin) -->
+        <div id="hostAdminControls" class="mt-3 grid grid-cols-2 gap-2">
+          <button onclick="playGrandOpeningSpeech()" class="col-span-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs shadow-md">
+            🎙️ Grand Opening Speech (शुरुआती भाषण)
+          </button>
+          <button onclick="drawNextPlayerManual()" class="py-2 px-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">
+            ⏩ Next Player
+          </button>
+          <button onclick="toggleAutoPilot()" id="autoPilotBtn" class="py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">
+            🤖 Auto-Pilot: ON
+          </button>
+          <button onclick="hammerSoldManual()" class="py-2 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs">
+            🔨 Force Sold
+          </button>
+          <button onclick="markUnsoldManual()" class="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+            ❌ Mark Unsold
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MOBILE FIXED STICKY BID PADDLE (BOTTOM) -->
+  <div class="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 border-t border-amber-500/40 backdrop-blur-lg z-40 flex items-center justify-between gap-3 max-w-lg mx-auto rounded-t-2xl shadow-2xl">
+    <div class="flex flex-col">
+      <span class="text-[10px] text-slate-400 uppercase font-bold" id="myTeamPurseLabel">My Purse</span>
+      <span class="text-base font-extrabold text-amber-300 font-cinzel" id="myTeamRemainingPurse">₹120.00 Cr</span>
+    </div>
+
+    <!-- Big Action Paddle Button -->
+    <button id="raisePaddleBtn" onclick="submitBid()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-base uppercase tracking-wider shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 active:scale-95 transition">
+      <span>🙋</span>
+      <span id="bidPaddleBtnText">BID ₹2.20 CR</span>
+    </button>
+  </div>
+
+  <!-- LEADERBOARD / SUMMARY OVERLAY MODAL -->
+  <div id="leaderboardModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
+    <div class="glass-card max-w-2xl w-full rounded-2xl p-5 border border-amber-500/40 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <div>
+          <h3 class="text-lg font-black text-amber-300 font-cinzel">🏆 LEAGUE PURSE & SQUAD STATUS</h3>
+          <p class="text-xs text-slate-400">Official Franchise Financial Standing</p>
+        </div>
+        <button onclick="toggleLeaderboardModal(false)" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 space-y-2 pr-1" id="leaderboardListContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between gap-2">
+        <button onclick="downloadOfficialReport()" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-500/30">
+          📄 Download Squad PDF
+        </button>
+        <button onclick="toggleLeaderboardModal(false)" class="py-2 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HAMBURGER MENU DRAWER -->
+  <div id="menuDrawer" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex justify-end">
+    <div class="w-full max-w-xs bg-slate-900 border-l border-amber-500/40 h-full p-4 flex flex-col justify-between">
+      <div class="space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <span class="font-black text-amber-300 font-cinzel text-base">MENU OPTIONS</span>
+          <button onclick="toggleMenuDrawer(false)" class="text-slate-400 text-lg">✕</button>
+        </div>
+        <div class="flex flex-col gap-2">
+          <button onclick="toggleLeaderboardModal(true); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-slate-200">
+            📊 View Leaderboard & Purses
+          </button>
+          <button onclick="toggleLanguage(); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-slate-200">
+            🗣️ Switch Voice: Hindi / English
+          </button>
+          <button onclick="downloadOfficialReport()" class="text-left py-2.5 px-3 rounded-xl bg-slate-800 text-sm font-bold text-amber-300">
+            📄 Export Squads PDF
+          </button>
+          <button onclick="openLoginModal(); toggleMenuDrawer(false);" class="text-left py-2.5 px-3 rounded-xl bg-amber-500/20 text-sm font-bold text-amber-300 border border-amber-500/30">
+            🔑 Switch Team / Admin Login
+          </button>
+        </div>
+      </div>
+      <div class="text-[10px] text-slate-500 text-center">GCSPL Mega Auction Engine v3.0</div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
+    <div class="glass-card max-w-sm w-full rounded-2xl p-5 border border-amber-500/40">
+      <h3 class="text-base font-black text-amber-300 font-cinzel mb-2">FRANCHISE & HOST LOGIN</h3>
+      <p class="text-xs text-slate-400 mb-4">Select your team to bid with your paddle.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] font-bold text-slate-300">Select Role / Team</label>
+          <select id="loginSelectRole" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-sm text-slate-200">
+            <option value="admin">Host / Auctioneer (Admin)</option>
+            <option value="CSK">Chennai Super Kings (CSK)</option>
+            <option value="MI">Mumbai Indians (MI)</option>
+            <option value="RCB">Royal Challengers Bengaluru (RCB)</option>
+            <option value="KKR">Kolkata Knight Riders (KKR)</option>
+            <option value="DC">Delhi Capitals (DC)</option>
+            <option value="GT">Gujarat Titans (GT)</option>
+            <option value="LSG">Lucknow Super Giants (LSG)</option>
+            <option value="RR">Rajasthan Royals (RR)</option>
+            <option value="SRH">Sunrisers Hyderabad (SRH)</option>
+            <option value="PBKS">Punjab Kings (PBKS)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-300">Password</label>
+          <input type="password" id="loginPasswordInput" placeholder="Enter password (e.g. csk123 or gcspl2026)" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-sm text-slate-200">
+        </div>
+        <button onclick="handleLoginSubmit()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider mt-2">
+          Login & Connect Paddle
+        </button>
+        <button onclick="closeLoginModal()" class="w-full py-2 text-xs text-slate-400 hover:text-white">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC (AI HOST, REAL FEMALE SPEECH, REALTIME SYNC) -->
+  <script>
+    // 10 FRANCHISES CONFIGURATION
+    const TEAMS = {
+      CSK: { name: 'Chennai Super Kings', short: 'CSK', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ITNAGRAM' },
+      MI: { name: 'Mumbai Indians', short: 'MI', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'KENVAS' },
+      RCB: { name: 'Royal Challengers Bengaluru', short: 'RCB', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ANSH' },
+      KKR: { name: 'Kolkata Knight Riders', short: 'KKR', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ADITYA' },
+      DC: { name: 'Delhi Capitals', short: 'DC', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'BHAIWELA' },
+      GT: { name: 'Gujarat Titans', short: 'GT', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SHRINI' },
+      LSG: { name: 'Lucknow Super Giants', short: 'LSG', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SHEERSH' },
+      RR: { name: 'Rajasthan Royals', short: 'RR', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SURYA' },
+      SRH: { name: 'Sunrisers Hyderabad', short: 'SRH', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'AYUSH' },
+      PBKS: { name: 'Punjab Kings', short: 'PBKS', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'RAJ' }
+    };
+
+    // SAMPLE TOP PLAYERS WITH VERIFIED HIGH-RES PHOTOS
+    const PLAYER_POOL = [
+      { id: 1, name: 'Virat Kohli', role: 'Top-Order Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=400&q=80' },
+      { id: 2, name: 'Rohit Sharma', role: 'Top-Order Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=400&q=80' },
+      { id: 3, name: 'Jasprit Bumrah', role: 'Fast Bowler', country: 'India', overseas: false, base: 2.00, photo: 'https://images.unsplash.com/photo-1508341591423-4347099e1f19?auto=format&fit=crop&w=400&q=80' },
+      { id: 4, name: 'Travis Head', role: 'Opening Batter', country: 'Australia', overseas: true, base: 2.00, photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80' },
+      { id: 5, name: 'Rishabh Pant', role: 'Wicketkeeper Batter', country: 'India', overseas: false, base: 2.00, photo: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80' },
+      { id: 6, name: 'Pat Cummins', role: 'Pace All-Rounder', country: 'Australia', overseas: true, base: 2.00, photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' }
+    ];
+
+    // STATE VARIABLES
+    let currentUser = { role: 'admin', teamId: null, name: 'Auctioneer (Host)' };
+    let currentLotIndex = 0;
+    let currentPlayer = PLAYER_POOL[0];
+    let currentBid = 2.00;
+    let highestBidder = null;
+    let timerValue = 12;
+    let timerInterval = null;
+    let autoPilotActive = true;
+    let voiceLanguage = 'hi'; // 'hi' or 'en'
+    let soundEnabled = true;
+
+    // SOCKET.IO CONNECTION
+    let socket = null;
+    try {
+      socket = io();
+      socket.on('bidReceived', (data) => {
+        applyBid(data.teamId, data.amount, false);
+      });
+      socket.on('stateUpdate', (serverState) => {
+        // sync server state if available
+      });
+    } catch(e) {
+      console.log('Socket running offline');
+    }
+
+    // STRICT FEMALE VOICE SYNTHESIS ENGINE
+    function speakText(text) {
+      if (!soundEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+
+      // Filter STRICTLY FEMALE voices & exclude known male names
+      let femaleVoice = null;
+      if (voiceLanguage === 'hi') {
+        femaleVoice = voices.find(v => v.lang.includes('hi') && !v.name.toLowerCase().includes('hemant') && !v.name.toLowerCase().includes('david') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('kalpana') || v.name.toLowerCase().includes('swara') || v.name.toLowerCase().includes('lekha')));
+      } else {
+        femaleVoice = voices.find(v => (v.lang.includes('en-IN') || v.lang.includes('en-GB') || v.lang.includes('en')) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha') || v.name.toLowerCase().includes('victoria')));
+      }
+
+      if (femaleVoice) utterance.voice = femaleVoice;
+      utterance.rate = 1.05;
+      utterance.pitch = 1.25; // Sweet higher pitch to ensure strictly feminine voice
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // SOUND & LANGUAGE TOGGLES
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundIcon').innerText = soundEnabled ? '🔊' : '🔇';
+      document.getElementById('soundLabel').innerText = soundEnabled ? 'Voice On' : 'Voice Off';
+    }
+
+    function toggleLanguage() {
+      voiceLanguage = (voiceLanguage === 'hi') ? 'en' : 'hi';
+      document.getElementById('langToggleBtn').innerText = (voiceLanguage === 'hi') ? '🇮🇳 Hindi' : '🇬🇧 English';
+      const msg = (voiceLanguage === 'hi') ? "आवाज़ हिंदी में सेट कर दी गई है।" : "Voice set to English.";
+      setCommentary(msg);
+      speakText(msg);
+    }
+
+    function setCommentary(msg) {
+      document.getElementById('liveCommentarySpeech').innerText = `"${msg}"`;
+    }
+
+    // GRAND OPENING SPEECH (MALLIKA SAGAR STYLE)
+    function playGrandOpeningSpeech() {
+      const speech = (voiceLanguage === 'hi')
+        ? "नमस्कार देवियों और सज्जनों, सभी टीम ओनर्स और क्रिकेट प्रेमियों का इंदौर प्रीमियर लीग ऑक्शन में हार्दिक स्वागत है! ऑक्शन शुरू करने से पहले जरूरी नियम: बोली लगाते समय अपना पैडल हमेशा ऊंचा और साफ रखें। जब तक हथौड़ा न गिरे तब तक बोली जारी रहेगी, और हथौड़ा गिरते ही फैसला अंतिम होगा! तो शुरू करते हैं आज का पहला सेट, मार्की सेट 1!"
+        : "Good morning ladies and gentlemen, franchise owners and management! A very warm welcome to the Premier League Player Auction right here in Indore! Please ensure your paddles are raised high and clear. When the gavel falls, the sale is final. Let us begin today's proceedings with Set Number 1, The Marquee Set!";
+      setCommentary(speech);
+      speakText(speech);
+    }
+
+    // TIMER & AUTO-PROGRESSION ENGINE
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerValue = 12;
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        timerValue--;
+        updateTimerUI();
+
+        if (timerValue === 5) {
+          const warn1 = (voiceLanguage === 'hi') ? "पहली चेतावनी... कोई और बोली?" : "Going once... any further bids?";
+          setCommentary(warn1);
+          speakText(warn1);
+        } else if (timerValue === 2) {
+          const warn2 = (voiceLanguage === 'hi') ? "दूसरी चेतावनी... अंतिम मौका!" : "Going twice... last call!";
+          setCommentary(warn2);
+          speakText(warn2);
+        } else if (timerValue <= 0) {
+          clearInterval(timerInterval);
+          finishLot();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      document.getElementById('timerText').innerText = `⏱️ ${timerValue}s Remaining`;
+      const pct = (timerValue / 12) * 100;
+      document.getElementById('timerProgressBar').style.width = `${pct}%`;
+    }
+
+    // DRAW NEXT PLAYER
+    function loadPlayer(index) {
+      if (index >= PLAYER_POOL.length) {
+        setCommentary("ऑक्शन समाप्त हो चुका है! बधाई हो!");
+        speakText("The auction has concluded! Congratulations to all teams.");
+        return;
+      }
+      currentLotIndex = index;
+      currentPlayer = PLAYER_POOL[index];
+      currentBid = currentPlayer.base;
+      highestBidder = null;
+
+      document.getElementById('playerNameText').innerText = currentPlayer.name;
+      document.getElementById('playerRoleBadge').innerText = currentPlayer.role;
+      document.getElementById('playerCountryBadge').innerText = (currentPlayer.overseas ? '✈️ ' : '🇮🇳 ') + currentPlayer.country;
+      document.getElementById('playerBasePriceBadge').innerText = `Base: ₹${currentPlayer.base.toFixed(2)} Cr`;
+      document.getElementById('lotBadge').innerText = `LOT #${currentPlayer.id} • MARQUEE SET`;
+      
+      const img = document.getElementById('playerPhotoImg');
+      img.src = currentPlayer.photo;
+      img.onerror = () => {
+        img.classList.add('hidden');
+        document.getElementById('jerseyFallback').classList.remove('hidden');
+        document.getElementById('jerseyInitials').innerText = currentPlayer.name.split(' ').map(n=>n[0]).join('');
+      };
+
+      document.getElementById('highestBidAmountText').innerText = `₹${currentBid.toFixed(2)} Cr`;
+      document.getElementById('highestBidTeamText').innerText = "Opening Lot (Waiting for first paddle)";
+      document.getElementById('yourTeamLeadNotice').classList.add('hidden');
+
+      updatePaddleButton();
+
+      const call = (voiceLanguage === 'hi')
+        ? `अगले खिलाड़ी हैं ${currentPlayer.name}। बेस प्राइस ${currentPlayer.base.toFixed(2)} करोड़ रुपये। पहली बोली दीजिए!`
+        : `Next lot is ${currentPlayer.name}. Base price at ${currentPlayer.base.toFixed(2)} crore. Opening bids please!`;
+      setCommentary(call);
+      speakText(call);
+
+      startTimer();
+    }
+
+    // BID INCREMENT RULES (IPL SLABS)
+    function getNextIncrement(bid) {
+      if (bid < 1.00) return 0.10;
+      if (bid < 5.00) return 0.20;
+      return 0.50;
+    }
+
+    function updatePaddleButton() {
+      const nextBid = highestBidder ? (currentBid + getNextIncrement(currentBid)) : currentBid;
+      document.getElementById('bidPaddleBtnText').innerText = `BID ₹${nextBid.toFixed(2)} CR`;
+    }
+
+    // SUBMIT BID FROM PADDLE
+    function submitBid() {
+      if (currentUser.role === 'admin' && !currentUser.teamId) {
+        alert("Please login as a Franchise (e.g. CSK, MI, RCB) to raise a paddle!");
+        openLoginModal();
+        return;
+      }
+      const teamId = currentUser.teamId;
+      const team = TEAMS[teamId];
+      const nextBid = highestBidder ? (currentBid + getNextIncrement(currentBid)) : currentBid;
+
+      if (team.purse < nextBid) {
+        alert(`Insufficient purse balance! You have ₹${team.purse.toFixed(2)} Cr remaining.`);
+        return;
+      }
+      if (currentPlayer.overseas && team.overseas >= 8) {
+        alert("Overseas player limit reached (Max 8 allowed)!");
+        return;
+      }
+
+      // Haptic feedback
+      if ('vibrate' in navigator) navigator.vibrate(50);
+
+      if (socket) {
+        socket.emit('bidAction', { teamId: teamId, amount: nextBid });
+      } else {
+        applyBid(teamId, nextBid, true);
+      }
+    }
+
+    function applyBid(teamId, amount, isLocal) {
+      highestBidder = teamId;
+      currentBid = amount;
+      const team = TEAMS[teamId];
+
+      document.getElementById('highestBidAmountText').innerText = `₹${currentBid.toFixed(2)} Cr`;
+      document.getElementById('highestBidTeamText').innerText = `Highest Bidder: ${team.name} (${team.short})`;
+
+      if (currentUser.teamId === teamId) {
+        document.getElementById('yourTeamLeadNotice').classList.remove('hidden');
+      } else {
+        document.getElementById('yourTeamLeadNotice').classList.add('hidden');
+      }
+
+      updatePaddleButton();
+
+      const call = (voiceLanguage === 'hi')
+        ? `${currentBid.toFixed(2)} करोड़ रुपये, ${team.name} की तरफ से!`
+        : `${currentBid.toFixed(2)} crore to ${team.name}!`;
+      setCommentary(call);
+      speakText(call);
+
+      startTimer(); // Reset timer to 12s on every bid
+    }
+
+    // LOT FINISH (SOLD / UNSOLD)
+    function finishLot() {
+      if (highestBidder) {
+        const team = TEAMS[highestBidder];
+        team.purse -= currentBid;
+        team.spent += currentBid;
+        team.players.push({ name: currentPlayer.name, price: currentBid });
+        if (currentPlayer.overseas) team.overseas++;
+
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+        const soldMsg = (voiceLanguage === 'hi')
+          ? `बिक गए! ${currentPlayer.name} को ${team.name} ने ${currentBid.toFixed(2)} करोड़ रुपये में खरीद लिया है!`
+          : `SOLD! ${currentPlayer.name} is sold to ${team.name} for ${currentBid.toFixed(2)} crore!`;
+        setCommentary(soldMsg);
+        speakText(soldMsg);
+
+        // Show Leaderboard Overlay for 6s then next player
+        setTimeout(() => {
+          toggleLeaderboardModal(true);
+          renderLeaderboard();
+          if (autoPilotActive) {
+            setTimeout(() => {
+              toggleLeaderboardModal(false);
+              loadPlayer(currentLotIndex + 1);
+            }, 6000);
+          }
+        }, 1500);
+
+      } else {
+        const unsoldMsg = (voiceLanguage === 'hi')
+          ? `${currentPlayer.name} अनसोल्ड रहे!`
+          : `${currentPlayer.name} remains UNSOLD!`;
+        setCommentary(unsoldMsg);
+        speakText(unsoldMsg);
+
+        if (autoPilotActive) {
+          setTimeout(() => {
+            loadPlayer(currentLotIndex + 1);
+          }, 4000);
+        }
+      }
+    }
+
+    // MANUAL HOST OVERRIDES
+    function drawNextPlayerManual() { loadPlayer(currentLotIndex + 1); }
+    function hammerSoldManual() { finishLot(); }
+    function markUnsoldManual() { highestBidder = null; finishLot(); }
+    function toggleAutoPilot() {
+      autoPilotActive = !autoPilotActive;
+      document.getElementById('autoPilotBtn').innerText = autoPilotActive ? '🤖 Auto-Pilot: ON' : '👤 Manual: OFF';
+    }
+
+    // MODAL & DRAWER HELPERS
+    function toggleMenuDrawer(show) {
+      document.getElementById('menuDrawer').classList.toggle('hidden', !show);
+    }
+    function toggleLeaderboardModal(show) {
+      document.getElementById('leaderboardModal').classList.toggle('hidden', !show);
+      if (show) renderLeaderboard();
+    }
+    function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
+    function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+
+    function handleLoginSubmit() {
+      const role = document.getElementById('loginSelectRole').value;
+      if (role === 'admin') {
+        currentUser = { role: 'admin', teamId: null, name: 'Auctioneer (Host)' };
+        document.getElementById('hostAdminControls').classList.remove('hidden');
+      } else {
+        currentUser = { role: 'team', teamId: role, name: TEAMS[role].name };
+        document.getElementById('hostAdminControls').classList.add('hidden');
+        document.getElementById('myTeamRemainingPurse').innerText = `₹${TEAMS[role].purse.toFixed(2)} Cr`;
+        document.getElementById('myTeamPurseLabel').innerText = `${TEAMS[role].short} Purse`;
+      }
+      document.getElementById('userNameLabel').innerText = currentUser.name;
+      closeLoginModal();
+    }
+
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboardListContainer');
+      container.innerHTML = Object.keys(TEAMS).map(key => {
+        const t = TEAMS[key];
+        const pct = ((120 - t.purse) / 120) * 100;
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="font-bold text-sm text-white">${t.name} (${t.short})</div>
+              <div class="text-[11px] text-slate-400">Players: ${t.players.length}/25 • Overseas: ${t.overseas}/8</div>
+            </div>
+            <div class="text-right">
+              <div class="font-extrabold text-sm text-amber-300 font-cinzel">₹${t.purse.toFixed(2)} Cr</div>
+              <div class="text-[10px] text-slate-500">Remaining</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function downloadOfficialReport() {
+      window.print();
+    }
+
+    // INITIALIZATION
+    window.onload = () => {
+      loadPlayer(0);
+    };
+  </script>
+</body>
+</html>
