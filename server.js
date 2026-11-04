@@ -19,13 +19,10 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log(' Connected to MongoDB Atlas'))
+    .then(() => console.log('Connected to MongoDB Atlas'))
     .catch(err => console.error('MongoDB Connection Error:', err));
-} else {
-  console.log('Running with in-memory storage (MONGODB_URI not provided)');
 }
 
-// State Schema
 const AuctionStateSchema = new mongoose.Schema({
   key: { type: String, default: 'current_auction', unique: true },
   data: { type: Object, required: true },
@@ -33,64 +30,47 @@ const AuctionStateSchema = new mongoose.Schema({
 });
 const AuctionState = mongoose.models.AuctionState || mongoose.model('AuctionState', AuctionStateSchema);
 
-let inMemoryState = null;
+let globalAuctionState = null;
 
-// REST API
-app.get('/api/state', async (req, res) => {
-  try {
-    if (mongoose.connection.readyState === 1) {
+io.on('connection', async (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Send current live state to newly joined mobile
+  if (globalAuctionState) {
+    socket.emit('syncStateFromServer', globalAuctionState);
+  } else if (mongoose.connection.readyState === 1) {
+    try {
       const doc = await AuctionState.findOne({ key: 'current_auction' });
-      return res.json(doc ? doc.data : inMemoryState || {});
-    }
-    res.json(inMemoryState || {});
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/state', async (req, res) => {
-  try {
-    inMemoryState = req.body;
-    if (mongoose.connection.readyState === 1) {
-      await AuctionState.findOneAndUpdate(
-        { key: 'current_auction' },
-        { data: req.body, updatedAt: new Date() },
-        { upsert: true, new: true }
-      );
-    }
-    io.emit('stateUpdate', inMemoryState);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Socket.io for Real-time instant bidding
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  if (inMemoryState) {
-    socket.emit('stateUpdate', inMemoryState);
+      if (doc && doc.data) {
+        globalAuctionState = doc.data;
+        socket.emit('syncStateFromServer', globalAuctionState);
+      }
+    } catch (e) {}
   }
 
-  socket.on('bidAction', async (bidData) => {
-    // Broadcast instantly to all connected phones
-    io.emit('bidReceived', bidData);
-  });
-
-  socket.on('syncState', async (fullState) => {
-    inMemoryState = fullState;
+  // Host or Team updates auction state
+  socket.on('pushStateToServer', async (newState) => {
+    globalAuctionState = newState;
+    io.emit('syncStateFromServer', globalAuctionState);
     if (mongoose.connection.readyState === 1) {
       try {
         await AuctionState.findOneAndUpdate(
           { key: 'current_auction' },
-          { data: fullState, updatedAt: new Date() },
+          { data: globalAuctionState, updatedAt: new Date() },
           { upsert: true }
         );
-      } catch (err) {
-        console.error('Error saving state:', err);
-      }
+      } catch (e) {}
     }
-    socket.broadcast.emit('stateUpdate', fullState);
+  });
+
+  // Instant Bid Action
+  socket.on('bidAction', (bidData) => {
+    io.emit('bidReceived', bidData);
+  });
+
+  // Speech / Commentary Sync across all phones
+  socket.on('broadcastSpeech', (speechObj) => {
+    io.emit('playSpeechOnClients', speechObj);
   });
 });
 
@@ -99,5 +79,5 @@ app.get('*', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(` GCSPL Mega Auction Server running on port ${PORT}`);
+  console.log(`GCSPL Mega Auction Server running on port ${PORT}`);
 });
