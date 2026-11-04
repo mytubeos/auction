@@ -106,7 +106,7 @@
     <!-- LEFT 7 COLS: WAITING LOBBY OR ACTIVE PLAYER CARD -->
     <div class="lg:col-span-7 flex flex-col gap-4">
 
-      <!-- 1. WAITING LOBBY SCREEN (SHOWN BEFORE AUCTION STARTS) -->
+      <!-- 1. WAITING LOBBY SCREEN -->
       <div id="waitingLobbyScreen" class="glass-card rounded-2xl p-6 sm:p-10 gold-border flex flex-col items-center justify-center text-center min-h-[380px]">
         <div class="w-20 h-20 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-4xl mb-4 shadow-xl">
           🏟️
@@ -118,13 +118,12 @@
           WELCOME TO GCSPL 2026
         </h2>
         <p class="text-xs sm:text-sm text-slate-300 max-w-md mb-6 leading-relaxed">
-          Abhi auction shuru nahi hua hai. Sabhi 10 Team Owners upar <b>"🔑 Login"</b> button dabakar apni-apni Franchise select kar lein. Jab sab tayyar honge, Host auction start karenge!
+          The auction has not started yet. All Franchise Owners must click the <b>"🔑 Login"</b> button above to connect their bidding paddle. The Host will begin the auction once all teams are ready.
         </p>
 
-        <!-- Quick Team Login Prompt -->
         <div class="flex flex-wrap justify-center gap-3 w-full max-w-md">
           <button onclick="openLoginModal()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-500/40 transition">
-            👥 Choose Your Team (CSK, MI, RCB...)
+            👥 Login as Franchise
           </button>
           <button id="lobbyStartAuctionBtn" onclick="startAuctionByHost()" class="hidden flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition">
             🚀 START AUCTION NOW (HOST)
@@ -132,7 +131,7 @@
         </div>
       </div>
 
-      <!-- 2. LIVE PLAYER BIDDING STAGE (HIDDEN UNTIL STARTED) -->
+      <!-- 2. LIVE PLAYER BIDDING STAGE -->
       <div id="liveBiddingStage" class="hidden glass-card rounded-2xl p-4 sm:p-6 gold-border relative flex flex-col items-center text-center">
         
         <!-- Timer Progress Bar -->
@@ -140,8 +139,8 @@
           <div id="timerProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 transition-all duration-300 w-full"></div>
         </div>
         <div class="flex justify-between items-center w-full text-xs font-bold mb-4 px-1">
-          <span id="lotBadge" class="text-amber-400 uppercase tracking-wider">LOT #1 • MARQUEE SET</span>
-          <span id="timerText" class="px-2.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono text-sm">⏱️ 20s</span>
+          <span id="lotBadge" class="text-amber-400 uppercase tracking-wider">MARQUEE SET</span>
+          <span id="timerText" class="px-2.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono text-sm">⏱️ 30s</span>
         </div>
 
         <!-- Player Photo -->
@@ -173,7 +172,7 @@
       </div>
     </div>
 
-    <!-- RIGHT 5 COLS: MALLIKA MA'AM COMMENTARY & HOST CONTROLS -->
+    <!-- RIGHT 5 COLS: COMMENTARY & HOST CONTROLS -->
     <div class="lg:col-span-5 flex flex-col gap-4">
       <div class="glass-card rounded-2xl p-4 gold-border flex-1 flex flex-col justify-between">
         <div>
@@ -182,7 +181,7 @@
               <div class="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center text-lg">👩‍⚖️</div>
               <div>
                 <div class="text-xs font-bold text-amber-300">MALLIKA SAGAR (AI HOST)</div>
-                <div class="text-[10px] text-emerald-400">Live Voice Commentary</div>
+                <div class="text-[10px] text-emerald-400">Calm & Realistic Pacing</div>
               </div>
             </div>
             <button onclick="toggleLanguage()" id="langToggleBtn" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 font-bold">
@@ -192,16 +191,16 @@
 
           <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 min-h-[130px] flex flex-col justify-between">
             <p id="liveCommentarySpeech" class="text-sm font-medium text-amber-200 leading-relaxed italic">
-              "नमस्कार देवियों और सज्जनों! सभी टीम ओनर्स लॉग इन कर लें। होस्ट के स्टार्ट करते ही बोली शुरू होगी!"
+              "Welcome to the GCSPL Mega Auction. Awaiting Host initialization to begin the proceedings."
             </p>
             <div class="flex justify-between items-center text-[10px] text-slate-500 mt-3 pt-2 border-t border-slate-900">
-              <span id="timerStateSubtext">Status: Waiting for Host</span>
-              <span>20s Initial / 15s Reset</span>
+              <span id="timerStateSubtext">Status: Waiting in Lobby</span>
+              <span>30s Initial / 20s Reset</span>
             </div>
           </div>
         </div>
 
-        <!-- HOST ADMIN PANEL (ONLY VISIBLE WHEN LOGGED IN AS ADMIN) -->
+        <!-- HOST ADMIN PANEL -->
         <div id="hostAdminControls" class="hidden mt-4 pt-3 border-t border-slate-800">
           <div class="text-[11px] font-extrabold uppercase text-amber-400 mb-2 flex items-center justify-between">
             <span>⚡ Host Control Desk</span>
@@ -209,24 +208,23 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <button onclick="startAuctionByHost()" id="hostMainStartBtn" class="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 font-black text-xs uppercase shadow-md">
-              🚀 Start Auction (Play Intro & Lot #1)
+              🚀 Start Auction
+            </button>
+            <button onclick="drawRandomPlayer()" class="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md">
+              🎲 Draw Random Player
             </button>
             <button onclick="togglePauseAuction()" id="pauseResumeBtn" class="py-2 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs">
               ⏸️ Pause Timer
             </button>
-            <button onclick="drawNextPlayerManual()" class="py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">
-              ⏩ Next Player
-            </button>
             <button onclick="hammerSoldManual()" class="py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs">
               🔨 Sell Now (SOLD)
             </button>
-            <button onclick="markUnsoldManual()" class="py-2 px-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-bold text-xs">
+            <button onclick="markUnsoldManual()" class="col-span-2 py-2 px-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-bold text-xs">
               ❌ Mark UNSOLD
             </button>
           </div>
         </div>
 
-        <!-- Quick Standings Preview on Main Screen -->
         <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
           <span class="text-xs font-bold text-slate-300">📊 10 Teams Purse & Squads</span>
           <button onclick="toggleLeaderboardModal(true)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-500/30">
@@ -254,12 +252,12 @@
     </div>
   </div>
 
-  <!-- POST-SALE & LIVE LEADERBOARD MODAL -->
+  <!-- LEADERBOARD MODAL -->
   <div id="leaderboardModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
     <div class="glass-card max-w-2xl w-full rounded-2xl p-4 sm:p-5 border border-amber-500/40 max-h-[88vh] flex flex-col">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
         <div>
-          <h3 id="leaderboardModalTitle" class="text-base sm:text-lg font-black text-amber-300 font-cinzel">🏆 ALL 10 FRANCHISES PURSE & SQUADS</h3>
+          <h3 class="text-base sm:text-lg font-black text-amber-300 font-cinzel">🏆 ALL 10 FRANCHISES PURSE & SQUADS</h3>
           <p class="text-xs text-slate-400">Purse Limit: ₹120.00 Cr • Squad Size: 18–25</p>
         </div>
         <button onclick="toggleLeaderboardModal(false)" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
@@ -278,7 +276,7 @@
     </div>
   </div>
 
-  <!-- 3-LINE HAMBURGER MENU DRAWER -->
+  <!-- HAMBURGER MENU DRAWER -->
   <div id="menuDrawer" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex justify-end">
     <div class="w-full max-w-xs bg-slate-900 border-l border-amber-500/40 h-full p-4 flex flex-col justify-between">
       <div class="space-y-4">
@@ -305,11 +303,11 @@
     </div>
   </div>
 
-  <!-- LOGIN MODAL (WITH TEAM PASSWORDS) -->
+  <!-- LOGIN MODAL -->
   <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
     <div class="glass-card max-w-sm w-full rounded-2xl p-5 border border-amber-500/40">
       <h3 class="text-base font-black text-amber-300 font-cinzel mb-1">TEAM & HOST LOGIN</h3>
-      <p class="text-xs text-slate-400 mb-4">Apni team select karein aur password daalein.</p>
+      <p class="text-xs text-slate-400 mb-4">Please select your team and enter your password.</p>
       <div class="space-y-3">
         <div>
           <label class="text-[11px] font-bold text-slate-300">Select Franchise or Host</label>
@@ -340,7 +338,6 @@
   </div>
 
   <script>
-    // PASSWORDS & TEAMS
     const PASSWORDS = {
       admin: 'gcspl2026',
       CSK: 'csk123', MI: 'mi123', RCB: 'rcb123', KKR: 'kkr123', DC: 'dc123',
@@ -348,16 +345,16 @@
     };
 
     const INITIAL_TEAMS = {
-      CSK: { name: 'Chennai Super Kings', short: 'CSK', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ITNAGRAM' },
-      MI: { name: 'Mumbai Indians', short: 'MI', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'KENVAS' },
-      RCB: { name: 'Royal Challengers Bengaluru', short: 'RCB', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ANSH' },
-      KKR: { name: 'Kolkata Knight Riders', short: 'KKR', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'ADITYA' },
-      DC: { name: 'Delhi Capitals', short: 'DC', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'BHAIWELA' },
-      GT: { name: 'Gujarat Titans', short: 'GT', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SHRINI' },
-      LSG: { name: 'Lucknow Super Giants', short: 'LSG', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SHEERSH' },
-      RR: { name: 'Rajasthan Royals', short: 'RR', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'SURYA' },
-      SRH: { name: 'Sunrisers Hyderabad', short: 'SRH', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'AYUSH' },
-      PBKS: { name: 'Punjab Kings', short: 'PBKS', purse: 120.00, spent: 0, players: [], overseas: 0, owner: 'RAJ' }
+      CSK: { name: 'Chennai Super Kings', short: 'CSK', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      MI: { name: 'Mumbai Indians', short: 'MI', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      RCB: { name: 'Royal Challengers Bengaluru', short: 'RCB', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      KKR: { name: 'Kolkata Knight Riders', short: 'KKR', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      DC: { name: 'Delhi Capitals', short: 'DC', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      GT: { name: 'Gujarat Titans', short: 'GT', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      LSG: { name: 'Lucknow Super Giants', short: 'LSG', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      RR: { name: 'Rajasthan Royals', short: 'RR', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      SRH: { name: 'Sunrisers Hyderabad', short: 'SRH', purse: 120.00, spent: 0, players: [], overseas: 0 },
+      PBKS: { name: 'Punjab Kings', short: 'PBKS', purse: 120.00, spent: 0, players: [], overseas: 0 }
     };
 
     const PLAYER_POOL = [
@@ -383,16 +380,16 @@
       { id: 20, name: 'Yashasvi Jaiswal', role: 'Opening Batter', country: 'India', overseas: false, base: 2.00, photo: '' }
     ];
 
-    // GLOBAL SYNCHRONIZED STATE
     let state = {
       auctionStarted: false,
       isPaused: false,
-      lotIndex: 0,
+      currentLotId: null,
       currentBid: 2.00,
       highestBidder: null,
-      timer: 20,
-      maxTimer: 20,
-      teams: JSON.parse(JSON.stringify(INITIAL_TEAMS))
+      timer: 30,
+      maxTimer: 30,
+      teams: JSON.parse(JSON.stringify(INITIAL_TEAMS)),
+      processedPlayers: []
     };
 
     let currentUser = { role: 'guest', teamId: null, name: 'Select Team / Login' };
@@ -401,7 +398,6 @@
     let hostTimerLoop = null;
     let socket = null;
 
-    // SOCKET INITIALIZATION
     try {
       socket = io();
       socket.on('syncStateFromServer', (serverState) => {
@@ -434,7 +430,6 @@
       }
     }
 
-    // FEMALE VOICE ENGINE
     function speakText(text) {
       if (!soundEnabled || !('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
@@ -450,7 +445,7 @@
       );
 
       if (femaleVoice) utterance.voice = femaleVoice;
-      utterance.rate = 1.02;
+      utterance.rate = 1.0;
       utterance.pitch = 1.25;
       window.speechSynthesis.speak(utterance);
     }
@@ -459,7 +454,6 @@
       document.getElementById('liveCommentarySpeech').innerText = `"${msg}"`;
     }
 
-    // NUMBER TO WORDS IN HINDI FOR MA'AM VOICE
     function formatCroreVoiceHindi(val) {
       const cr = Math.floor(val);
       const lkh = Math.round((val - cr) * 100);
@@ -467,49 +461,50 @@
       return `${cr} करोड़ ${lkh} लाख रुपये`;
     }
 
-    // HOST STARTS THE AUCTION FROM LOBBY
     function startAuctionByHost() {
       if (currentUser.role !== 'admin') {
-        alert("Sirf Host (Admin) hi auction start kar sakte hain!");
+        alert("Only the Host (Admin) can start the auction!");
         return;
       }
+      if (state.auctionStarted) return;
       state.auctionStarted = true;
       state.isPaused = false;
-      state.lotIndex = 0;
-      loadLotOnHost(0, true);
+      broadcastSpeech(
+        `नमस्कार देवियों और सज्जनों! इंदौर प्रीमियर लीग मेगा ऑक्शन में आपका स्वागत है!`,
+        `Welcome ladies and gentlemen to the Mega Auction! Let the proceedings begin.`
+      );
+      setTimeout(() => { drawRandomPlayer(); }, 3500);
     }
 
-    function loadLotOnHost(idx, isFirstStart = false) {
+    function drawRandomPlayer() {
       clearInterval(hostTimerLoop);
-      if (idx >= PLAYER_POOL.length) {
+      if (currentUser.role !== 'admin') return;
+
+      const availablePlayers = PLAYER_POOL.filter(p => !state.processedPlayers.includes(p.id));
+      
+      if (availablePlayers.length === 0) {
         broadcastSpeech("ऑक्शन समाप्त हो चुका है! सभी टीमों को बधाई!", "The Mega Auction is now complete! Congratulations to all franchises!");
         return;
       }
 
-      const p = PLAYER_POOL[idx];
-      state.lotIndex = idx;
+      const randomIndex = Math.floor(Math.random() * availablePlayers.length);
+      const p = availablePlayers[randomIndex];
+
+      state.currentLotId = p.id;
       state.currentBid = p.base;
       state.highestBidder = null;
-      state.timer = 20; // Full 20 seconds for new player
-      state.maxTimer = 20;
+      state.timer = 30; 
+      state.maxTimer = 30;
       broadcastState();
 
-      if (isFirstStart) {
-        broadcastSpeech(
-          `नमस्कार देवियों और सज्जनों! इंदौर प्रीमियर लीग मेगा ऑक्शन में आपका स्वागत है! आज के पहले खिलाड़ी हैं ${p.name}, बेस प्राइस 2 करोड़ रुपये। बोली शुरू कीजिए!`,
-          `Welcome ladies and gentlemen to the Mega Auction! Our first player is ${p.name}, base price 2 crore rupees. Let the bidding begin!`
-        );
-      } else {
-        broadcastSpeech(
-          `अगले खिलाड़ी हैं ${p.name}, बेस प्राइस ${formatCroreVoiceHindi(p.base)}। पहली बोली किसकी होगी?`,
-          `Next player up is ${p.name}, base price ${p.base.toFixed(2)} crore rupees.`
-        );
-      }
+      broadcastSpeech(
+        `अगले खिलाड़ी हैं ${p.name}, बेस प्राइस ${formatCroreVoiceHindi(p.base)}। पहली बोली किसकी होगी?`,
+        `Next player up is ${p.name}, base price ${p.base.toFixed(2)} crore rupees.`
+      );
 
       startHostMasterTimer();
     }
 
-    // MASTER TIMER (CONTROLLED BY HOST SO ALL PHONES STAY IN SYNC)
     function startHostMasterTimer() {
       clearInterval(hostTimerLoop);
       if (currentUser.role !== 'admin') return;
@@ -520,20 +515,22 @@
         state.timer--;
         broadcastState();
 
-        if (state.timer === 7 && state.highestBidder) {
+        if (state.timer === 10 && state.highestBidder) {
           const tName = state.teams[state.highestBidder].name;
           broadcastSpeech(
             `${formatCroreVoiceHindi(state.currentBid)}, ${tName} के पास... पहली बार!`,
             `${state.currentBid.toFixed(2)} crore to ${tName}... Going once!`
           );
-        } else if (state.timer === 3 && state.highestBidder) {
+        } else if (state.timer === 5 && state.highestBidder) {
           broadcastSpeech(
             `दूसरी और अंतिम चेतावनी... क्या कोई और बोली है?`,
             `Going twice... Last and final call!`
           );
         } else if (state.timer <= 0) {
           clearInterval(hostTimerLoop);
-          concludeCurrentLotOnHost();
+          state.isPaused = true;
+          broadcastState();
+          broadcastSpeech("समय समाप्त! होस्ट का निर्णय अंतिम होगा।", "Time is up! Awaiting Host's final decision.");
         }
       }, 1000);
     }
@@ -544,38 +541,37 @@
       return 0.50;
     }
 
-    // TEAM CLICKS RAISE PADDLE
     function submitBid() {
       if (!state.auctionStarted) {
-        alert("Abhi Host ne auction start nahi kiya hai. Kripya intezar karein!");
+        alert("The Host has not started the auction yet. Please wait!");
         return;
       }
       if (state.isPaused) {
-        alert("Auction abhi Paused hai!");
+        alert("The auction is currently paused. Please wait for the Host to resume.");
         return;
       }
       if (!currentUser.teamId) {
-        alert("Boli lagane ke liye pehle upar '🔑 Login' button dabakar apni Team select karein!");
+        alert("Please login and select your team first to raise the paddle!");
         openLoginModal();
         return;
       }
 
       const myTeamId = currentUser.teamId;
       if (state.highestBidder === myTeamId) {
-        alert("Aapki team ki boli pehle se sabse upar hai!");
+        alert("Your team already holds the highest bid!");
         return;
       }
 
       const nextAmt = state.highestBidder ? +(state.currentBid + getIncrement(state.currentBid)).toFixed(2) : state.currentBid;
       const myTeam = state.teams[myTeamId];
-      const p = PLAYER_POOL[state.lotIndex];
+      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId);
 
       if (myTeam.purse < nextAmt) {
-        alert(`Aapke purse mein ₹${myTeam.purse.toFixed(2)} Cr bache hain!`);
+        alert(`Insufficient purse balance! You only have ₹${myTeam.purse.toFixed(2)} Cr remaining.`);
         return;
       }
       if (p.overseas && myTeam.overseas >= 8) {
-        alert("Max 8 Overseas players limit poori ho chuki hai!");
+        alert("You have reached the maximum limit of 8 overseas players!");
         return;
       }
 
@@ -591,8 +587,9 @@
     function processBidOnHost(teamId, amount) {
       state.highestBidder = teamId;
       state.currentBid = amount;
-      state.timer = 15; // Full 15 seconds reset on every bid
-      state.maxTimer = 15;
+      state.timer = 20; 
+      state.maxTimer = 20;
+      if (state.isPaused) state.isPaused = false;
       broadcastState();
 
       const tName = state.teams[teamId].name;
@@ -603,17 +600,19 @@
       startHostMasterTimer();
     }
 
-    function concludeCurrentLotOnHost() {
+    function concludeCurrentLotOnHost(isSold) {
       clearInterval(hostTimerLoop);
-      const p = PLAYER_POOL[state.lotIndex];
+      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId);
+      state.processedPlayers.push(p.id); 
 
-      if (state.highestBidder) {
+      if (isSold && state.highestBidder) {
         const winner = state.teams[state.highestBidder];
         winner.purse = +(winner.purse - state.currentBid).toFixed(2);
         winner.spent = +(winner.spent + state.currentBid).toFixed(2);
         winner.players.push({ name: p.name, role: p.role, price: state.currentBid, overseas: p.overseas });
         if (p.overseas) winner.overseas++;
 
+        state.isPaused = true;
         broadcastState();
         confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
 
@@ -624,28 +623,19 @@
 
         setTimeout(() => {
           toggleLeaderboardModal(true);
-          setTimeout(() => {
-            toggleLeaderboardModal(false);
-            if (currentUser.role === 'admin' && !state.isPaused) {
-              loadLotOnHost(state.lotIndex + 1, false);
-            }
-          }, 6000);
         }, 1500);
 
       } else {
+        state.highestBidder = null;
+        state.isPaused = true;
+        broadcastState();
         broadcastSpeech(
           `${p.name} पर कोई बोली नहीं लगी, खिलाड़ी अनसोल्ड रहे!`,
           `No bids received. ${p.name} remains UNSOLD!`
         );
-        setTimeout(() => {
-          if (currentUser.role === 'admin' && !state.isPaused) {
-            loadLotOnHost(state.lotIndex + 1, false);
-          }
-        }, 4000);
       }
     }
 
-    // RENDER UI BASED ON CURRENT STATE
     function renderFullUI() {
       const lobby = document.getElementById('waitingLobbyScreen');
       const stage = document.getElementById('liveBiddingStage');
@@ -655,20 +645,20 @@
         lobby.classList.remove('hidden');
         stage.classList.add('hidden');
         statusBadge.innerText = '⏳ Waiting in Lobby';
+        return;
       } else {
         lobby.classList.add('hidden');
         stage.classList.remove('hidden');
         statusBadge.innerText = state.isPaused ? '⏸️ Auction Paused' : '🟢 Auction Live';
       }
 
-      const p = PLAYER_POOL[state.lotIndex] || PLAYER_POOL[0];
-      document.getElementById('lotBadge').innerText = `LOT #${p.id} • MARQUEE SET`;
+      const p = PLAYER_POOL.find(pl => pl.id === state.currentLotId) || PLAYER_POOL[0];
+      
       document.getElementById('playerNameText').innerText = p.name;
       document.getElementById('playerRoleBadge').innerText = p.role;
       document.getElementById('playerCountryBadge').innerText = (p.overseas ? '✈️ ' : '🇮🇳 ') + p.country;
       document.getElementById('playerBasePriceBadge').innerText = `Base: ₹${p.base.toFixed(2)} Cr`;
 
-      // Photo or 3D Jersey Fallback
       const img = document.getElementById('playerPhotoImg');
       const fallback = document.getElementById('jerseyFallback');
       if (p.photo) {
@@ -686,12 +676,10 @@
         document.getElementById('jerseyInitials').innerText = p.name.split(' ').map(w=>w[0]).join('');
       }
 
-      // Timer UI
       document.getElementById('timerText').innerText = state.isPaused ? '⏸️ PAUSED' : `⏱️ ${state.timer}s`;
-      const pct = Math.max(0, Math.min(100, (state.timer / (state.maxTimer || 20)) * 100));
+      const pct = Math.max(0, Math.min(100, (state.timer / (state.maxTimer || 30)) * 100));
       document.getElementById('timerProgressBar').style.width = `${pct}%`;
 
-      // Bid Spotlight
       document.getElementById('highestBidAmountText').innerText = `₹${state.currentBid.toFixed(2)} Cr`;
       if (state.highestBidder) {
         const leader = state.teams[state.highestBidder];
@@ -700,7 +688,6 @@
         document.getElementById('highestBidTeamText').innerText = `Opening Bid: ₹${p.base.toFixed(2)} Cr`;
       }
 
-      // My Team Purse & Paddle Button
       if (currentUser.teamId && state.teams[currentUser.teamId]) {
         const myT = state.teams[currentUser.teamId];
         document.getElementById('myTeamPurseLabel').innerText = `${myT.short} Purse (${myT.players.length}/25)`;
@@ -712,28 +699,22 @@
       document.getElementById('bidPaddleBtnText').innerText = `BID ₹${nextBidVal.toFixed(2)} CR`;
     }
 
-    // HOST CONTROLS
     function togglePauseAuction() {
       if (currentUser.role !== 'admin') return;
       state.isPaused = !state.isPaused;
       document.getElementById('pauseResumeBtn').innerText = state.isPaused ? '▶️ Resume Timer' : '⏸️ Pause Timer';
       broadcastState();
-    }
-    function drawNextPlayerManual() {
-      if (currentUser.role !== 'admin') return;
-      loadLotOnHost(state.lotIndex + 1, false);
+      if (!state.isPaused) startHostMasterTimer();
     }
     function hammerSoldManual() {
       if (currentUser.role !== 'admin') return;
-      concludeCurrentLotOnHost();
+      concludeCurrentLotOnHost(true);
     }
     function markUnsoldManual() {
       if (currentUser.role !== 'admin') return;
-      state.highestBidder = null;
-      concludeCurrentLotOnHost();
+      concludeCurrentLotOnHost(false);
     }
 
-    // LOGIN HANDLER
     function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
     function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
 
@@ -742,12 +723,12 @@
       const pass = document.getElementById('loginPasswordInput').value.trim();
 
       if (PASSWORDS[role] && pass !== PASSWORDS[role]) {
-        alert("Galat Password! Sahi password dropdown mein likha hua hai.");
+        alert("Invalid Password! Please check the password listed in the dropdown.");
         return;
       }
 
       if (role === 'admin') {
-        currentUser = { role: 'admin', teamId: 'CSK', name: '🎙️ Host (Admin)' };
+        currentUser = { role: 'admin', teamId: null, name: '🎙️ Host (Admin)' };
         document.getElementById('hostAdminControls').classList.remove('hidden');
         document.getElementById('lobbyStartAuctionBtn').classList.remove('hidden');
       } else {
@@ -761,7 +742,6 @@
       renderFullUI();
     }
 
-    // AUDIO & LANGUAGE
     function toggleAudio() {
       soundEnabled = !soundEnabled;
       document.getElementById('soundIcon').innerText = soundEnabled ? '🔊' : '🔇';
